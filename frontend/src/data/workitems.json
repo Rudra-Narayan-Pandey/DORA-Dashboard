@@ -1,0 +1,72 @@
+[
+  {
+    "id": "WRK-3021",
+    "title": "Migrate dashboard analytics page to Recharts responsive container",
+    "type": "feature",
+    "status": "done",
+    "leadTime": 2.5,
+    "priority": "high",
+    "assignee": "Elena Rostova",
+    "timestamp": "2026-07-06T18:00:00Z"
+  },
+  {
+    "id": "WRK-3020",
+    "title": "Configure client-side rate limiting on public gateway endpoints",
+    "type": "security",
+    "status": "done",
+    "leadTime": 4.8,
+    "priority": "high",
+    "assignee": "Sarah Connor",
+    "timestamp": "2026-07-06T17:15:00Z"
+  },
+  {
+    "id": "WRK-3019",
+    "title": "Update redis pub/sub buffers to prevent ws connection drop cascading",
+    "type": "bug",
+    "status": "done",
+    "leadTime": 6.2,
+    "priority": "medium",
+    "assignee": "Alexander Vance",
+    "timestamp": "2026-07-06T12:00:00Z"
+  },
+  {
+    "id": "WRK-3018",
+    "title": "Fix memory leak in auth session cache validation checks",
+    "type": "bug",
+    "status": "in_progress",
+    "leadTime": null,
+    "priority": "high",
+    "assignee": "Marcus Kane",
+    "timestamp": "2026-07-06T11:30:00Z"
+  },
+  {
+    "id": "WRK-3017",
+    "title": "Implement dark-mode first design guidelines for settings panel",
+    "type": "feature",
+    "status": "in_progress",
+    "leadTime": null,
+    "priority": "medium",
+    "assignee": "Elena Rostova",
+    "timestamp": "2026-07-06T10:00:00Z"
+  },
+  {
+    "id": "WRK-3016",
+    "title": "Clean up stale elasticsearch snapshots on sandbox environments",
+    "type": "chore",
+    "status": "todo",
+    "leadTime": null,
+    "priority": "low",
+    "assignee": "Alexander Vance",
+    "timestamp": "2026-07-06T09:00:00Z"
+  },
+  {
+    "id": "WRK-3015",
+    "title": "Conduct security audit for OAuth token callback flows",
+    "type": "security",
+    "status": "todo",
+    "leadTime": null,
+    "priority": "high",
+    "assignee": "Sarah Connor",
+    "timestamp": "2026-07-06T08:00:00Z"
+  }
+]

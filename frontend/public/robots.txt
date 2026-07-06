@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /settings
+Disallow: /api/
+
+Sitemap: https://dora-grid-control.io/sitemap.xml

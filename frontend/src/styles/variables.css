@@ -1,0 +1,36 @@
+:root {
+  --color-bg: #050816;
+  --color-card-bg: rgba(10, 15, 30, 0.45);
+  --color-border: rgba(0, 242, 254, 0.15);
+  --color-border-hover: rgba(0, 242, 254, 0.35);
+  
+  --color-cyan: #00f2fe;
+  --color-blue: #0070f3;
+  --color-electric: #00d2ff;
+  --color-indigo: #5d5fef;
+  --color-violet: #8b5cf6;
+  --color-green: #05ffc4;
+  --color-rose: #ff2a5f;
+  --color-yellow: #f59e0b;
+  
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  
+  --shadow-glow-cyan: 0 0 15px rgba(0, 242, 254, 0.3);
+  --shadow-glow-indigo: 0 0 15px rgba(93, 95, 239, 0.3);
+  --shadow-glow-violet: 0 0 15px rgba(139, 92, 246, 0.3);
+  --shadow-glow-green: 0 0 15px rgba(5, 255, 196, 0.3);
+  --shadow-glow-rose: 0 0 15px rgba(255, 42, 95, 0.3);
+  
+  --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+  --font-mono: 'Space Mono', 'Fira Code', monospace;
+}
+
+.light-theme {
+  /* Futuristic light operating system variables if needed, though dark-mode-first is strict */
+  --color-bg: #0b0f24;
+  --color-card-bg: rgba(15, 23, 42, 0.6);
+  --color-border: rgba(0, 242, 254, 0.2);
+  --color-border-hover: rgba(0, 242, 254, 0.4);
+}

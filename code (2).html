@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AetherOS | Lead Time Command Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;family=Geist:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #050816;
+            color: #dfe1f6;
+            overflow-x: hidden;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 20px rgba(0, 219, 231, 0.15);
+        }
+        .glow-text-cyan {
+            text-shadow: 0 0 10px rgba(0, 219, 231, 0.5);
+        }
+        .scanline-row:hover {
+            background: linear-gradient(90deg, transparent, rgba(0, 219, 231, 0.05), transparent);
+            position: relative;
+        }
+        .scanline-row:hover::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: rgba(0, 219, 231, 0.3);
+            animation: scanline 2s linear infinite;
+        }
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100%); }
+        }
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .5; transform: scale(1.2); }
+        }
+        .aurora-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 20% 30%, rgba(0, 219, 231, 0.05) 0%, transparent 40%),
+                        radial-gradient(circle at 80% 70%, rgba(47, 46, 190, 0.1) 0%, transparent 40%);
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed-variant": "#2f2ebe",
+                    "surface-container-low": "#171b2a",
+                    "on-primary": "#00363a",
+                    "on-primary-fixed-variant": "#004f54",
+                    "surface-container-highest": "#303444",
+                    "on-tertiary-fixed": "#2c0051",
+                    "on-primary-fixed": "#002022",
+                    "tertiary": "#fef4ff",
+                    "error": "#ffb4ab",
+                    "surface-bright": "#353849",
+                    "error-container": "#93000a",
+                    "secondary-container": "#3131c0",
+                    "outline": "#849495",
+                    "secondary-fixed": "#e1e0ff",
+                    "on-secondary-fixed": "#07006c",
+                    "secondary": "#c0c1ff",
+                    "on-secondary": "#1000a9",
+                    "on-secondary-container": "#b0b2ff",
+                    "surface-tint": "#00dbe7",
+                    "on-tertiary-container": "#852cd3",
+                    "tertiary-fixed": "#f0dbff",
+                    "primary-fixed": "#74f5ff",
+                    "on-tertiary-fixed-variant": "#6900b3",
+                    "on-error-container": "#ffdad6",
+                    "surface-container-lowest": "#0a0d1c",
+                    "on-surface": "#dfe1f6",
+                    "primary-fixed-dim": "#00dbe7",
+                    "surface-container-high": "#262939",
+                    "inverse-primary": "#00696f",
+                    "on-error": "#690005",
+                    "surface-dim": "#0f1321",
+                    "primary-container": "#00f2ff",
+                    "outline-variant": "#3a494b",
+                    "surface-variant": "#303444",
+                    "on-background": "#dfe1f6",
+                    "tertiary-container": "#ebd1ff",
+                    "tertiary-fixed-dim": "#ddb7ff",
+                    "primary": "#e1fdff",
+                    "surface": "#0f1321",
+                    "on-primary-container": "#006a71",
+                    "surface-container": "#1b1f2e",
+                    "inverse-on-surface": "#2c303f",
+                    "secondary-fixed-dim": "#c0c1ff",
+                    "on-tertiary": "#490080",
+                    "inverse-surface": "#dfe1f6",
+                    "on-surface-variant": "#b9cacb",
+                    "background": "#0f1321"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "8px",
+                    "panel-gap": "16px",
+                    "container-padding": "40px",
+                    "gutter": "24px",
+                    "glass-padding": "24px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Space Grotesk"],
+                    "data-metric": ["Space Grotesk"],
+                    "body-md": ["Geist"],
+                    "label-mono": ["JetBrains Mono"],
+                    "headline-lg-mobile": ["Space Grotesk"],
+                    "headline-lg": ["Space Grotesk"]
+            },
+            "fontSize": {
+                    "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "data-metric": ["24px", { "lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                    "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                    "label-mono": ["12px", { "lineHeight": "1.4", "letterSpacing": "0.1em", "fontWeight": "500" }],
+                    "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                    "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "600" }]
+            }
+          },
+        },
+      }
+    </script>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- Background Aurora -->
+<div class="aurora-bg"></div>
+
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-surface-container-lowest/30 backdrop-blur-3xl border-r border-white/10 shadow-[0_0_20px_rgba(0,219,231,0.1)] flex flex-col py-unit px-unit z-50">
+<div class="mb-12 px-4 py-6">
+<h1 class="font-display-lg text-display-lg font-bold text-primary-fixed tracking-tighter">AetherOS</h1>
+<p class="font-label-mono text-label-mono text-on-surface-variant uppercase tracking-widest opacity-60">Mission Control</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5 group" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Mission Control</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5 group" href="#">
+<span class="material-symbols-outlined">rocket_launch</span>
+<span class="font-body-md text-body-md">Deployment</span>
+</a>
+<!-- Active State: Lead Time -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 text-primary-fixed-dim bg-primary-container/10 border-r-2 border-primary-fixed-dim group glow-cyan" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">timer</span>
+<span class="font-body-md text-body-md">Lead Time</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5 group" href="#">
+<span class="material-symbols-outlined">build_circle</span>
+<span class="font-body-md text-body-md">MTTR</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5 group" href="#">
+<span class="material-symbols-outlined">report_problem</span>
+<span class="font-body-md text-body-md">Change Fail</span>
+</a>
+</nav>
+<div class="mt-auto px-4 py-6">
+<div class="flex items-center gap-3 mb-6 p-2 rounded-xl bg-white/5 border border-white/5">
+<img class="w-10 h-10 rounded-full border border-primary-fixed-dim/30" data-alt="A futuristic portrait of a cybernetic mission commander with glowing blue retinal implants and sleek tactical headset, set against a dark cockpit filled with holographic displays, cinematic lighting, ultra-detailed textures." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXTKRum2uWKHuPxdHR-M8rdSeSovF6kZnlVJlAy5oWm6KghuUqTI6gZgojZ9Y8CIrDkHqaY7fisqhXkFSOIO9p2ibmC79yHD6vjlTtAOwIebSbrRLDdzbzz5YTEAnBAQfJVbHyxieOMqVrpz1Jtr_WrBCf7-F4CabzX-TfuaM_wzQX6pbK2ziaBLekLE_A-Mrlfqzv0staN4D23Ueu7YClrJXaAqw5Qk2pjaO1RuYztzuOTzRbeD7Yzg"/>
+<div>
+<p class="text-sm font-bold text-on-surface">Cmdr. Vane</p>
+<p class="text-xs text-on-surface-variant">Fleet Admiral</p>
+</div>
+</div>
+<button class="w-full py-3 bg-gradient-to-r from-primary-fixed-dim to-secondary-container text-on-primary font-bold rounded-lg shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 active:scale-95" onclick="document.getElementById('launch-modal').classList.remove('hidden')">
+                Initiate Launch
+            </button>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-64 h-16 bg-surface-container-lowest/20 backdrop-blur-xl border-b border-white/10 flex justify-between items-center px-container-padding z-40">
+<div class="flex items-center gap-8">
+<h2 class="font-display-lg text-headline-lg text-primary-fixed-dim uppercase tracking-widest">Lead Time Command</h2>
+<nav class="hidden md:flex gap-6">
+<a class="font-label-mono text-label-mono text-on-surface-variant hover:text-primary-fixed transition-colors" href="#">Telemetry</a>
+<a class="font-label-mono text-label-mono text-on-surface-variant hover:text-primary-fixed transition-colors" href="#">Logs</a>
+<a class="font-label-mono text-label-mono text-on-surface-variant hover:text-primary-fixed transition-colors" href="#">Alerts</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<input class="bg-white/5 border-white/10 rounded-full pl-10 pr-4 py-1 text-sm focus:ring-1 focus:ring-primary-fixed/50 w-64 transition-all duration-300" placeholder="Search Telemetry..." type="text"/>
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+</div>
+<div class="flex gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 text-on-surface-variant transition-colors"><span class="material-symbols-outlined">notifications</span></button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 text-on-surface-variant transition-colors"><span class="material-symbols-outlined">settings</span></button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 text-on-surface-variant transition-colors"><span class="material-symbols-outlined">account_circle</span></button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-64 pt-24 px-container-padding pb-12">
+<!-- Hero Section: Lead Time Velocity -->
+<section class="mb-gutter">
+<div class="glass-panel rounded-xl p-glass-padding overflow-hidden relative">
+<div class="flex justify-between items-start mb-6 z-10 relative">
+<div>
+<h3 class="font-display-lg text-headline-lg text-primary-fixed-dim">Lead Time Velocity</h3>
+<p class="font-body-md text-on-surface-variant">Time-to-market trajectory across the primary cluster</p>
+</div>
+<div class="flex gap-2">
+<span class="bg-primary-container/10 text-primary-fixed-dim px-3 py-1 rounded-full text-xs font-label-mono flex items-center gap-2">
+<span class="w-2 h-2 bg-primary-fixed-dim rounded-full pulse-dot"></span>
+                            REAL-TIME FEED
+                        </span>
+<select class="bg-surface-container-highest/30 border-white/10 rounded-lg text-xs font-label-mono px-3 py-1 outline-none">
+<option>LAST 24 HOURS</option>
+<option>LAST 7 DAYS</option>
+</select>
+</div>
+</div>
+<div class="h-64 w-full relative">
+<!-- Area Chart Visual Mockup -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 200">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="rgba(0, 219, 231, 0.4)"></stop>
+<stop offset="100%" stop-color="transparent"></stop>
+</lineargradient>
+</defs>
+<path d="M0 150 Q 100 80, 200 120 T 400 100 T 600 60 T 800 90 T 1000 40 L 1000 200 L 0 200 Z" fill="url(#chartGradient)"></path>
+<path class="drop-shadow-[0_0_10px_rgba(0,219,231,0.8)]" d="M0 150 Q 100 80, 200 120 T 400 100 T 600 60 T 800 90 T 1000 40" fill="none" stroke="#00dbe7" stroke-width="3"></path>
+</svg>
+<!-- Y-Axis Labels -->
+<div class="absolute left-0 top-0 h-full flex flex-col justify-between text-[10px] font-label-mono text-on-surface-variant opacity-40">
+<span>4h</span><span>3h</span><span>2h</span><span>1h</span><span>0</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Bento Grid Metrics -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-panel-gap mb-gutter">
+<!-- Median Lead Time -->
+<div class="glass-panel rounded-xl p-glass-padding group hover:shadow-[0_0_15px_rgba(0,219,231,0.2)] transition-all">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary-fixed-dim">schedule</span>
+<span class="text-[10px] font-label-mono text-primary-fixed-dim uppercase tracking-tighter">Stability Score: 98%</span>
+</div>
+<div class="font-label-mono text-xs text-on-surface-variant mb-1 uppercase tracking-widest">Median Lead Time</div>
+<div class="font-data-metric text-display-lg text-primary-fixed glow-text-cyan">1h 22m</div>
+<div class="mt-4 text-xs text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-green-400 text-sm">trending_down</span>
+<span class="text-green-400 font-bold">-12%</span> vs last week
+                </div>
+</div>
+<!-- Process Efficiency -->
+<div class="glass-panel rounded-xl p-glass-padding group hover:shadow-[0_0_15px_rgba(0,219,231,0.2)] transition-all">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-secondary">bolt</span>
+<span class="text-[10px] font-label-mono text-secondary uppercase tracking-tighter">Cluster Health</span>
+</div>
+<div class="font-label-mono text-xs text-on-surface-variant mb-1 uppercase tracking-widest">Process Efficiency</div>
+<div class="font-data-metric text-display-lg text-secondary">88%</div>
+<div class="mt-4 w-full bg-white/5 h-1 rounded-full overflow-hidden">
+<div class="bg-secondary h-full" style="width: 88%"></div>
+</div>
+</div>
+<!-- Deployment Velocity -->
+<div class="glass-panel rounded-xl p-glass-padding group hover:shadow-[0_0_15px_rgba(0,219,231,0.2)] transition-all">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary-fixed-dim">rocket_launch</span>
+<span class="text-[10px] font-label-mono text-primary-fixed-dim uppercase tracking-tighter">Elite Performer</span>
+</div>
+<div class="font-label-mono text-xs text-on-surface-variant mb-1 uppercase tracking-widest">Deployment Velocity</div>
+<div class="font-data-metric text-display-lg text-on-surface">12<span class="text-2xl text-on-surface-variant">/day</span></div>
+<div class="mt-4 text-xs text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-primary-fixed-dim text-sm">auto_graph</span>
+                    Scaling according to schedule
+                </div>
+</div>
+</section>
+<!-- Pipeline Stage Breakdown Table -->
+<section class="glass-panel rounded-xl overflow-hidden">
+<div class="px-glass-padding py-6 border-b border-white/10 flex justify-between items-center">
+<h3 class="font-headline-lg text-headline-lg text-on-surface">Pipeline Stage Breakdown</h3>
+<button class="font-label-mono text-xs text-primary-fixed-dim flex items-center gap-2 hover:underline">
+<span class="material-symbols-outlined text-sm">download</span>
+                    EXPORT REPORT
+                </button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left font-label-mono">
+<thead class="bg-white/5 text-[10px] text-on-surface-variant uppercase tracking-widest">
+<tr>
+<th class="px-glass-padding py-4">Phase</th>
+<th class="px-glass-padding py-4">Status</th>
+<th class="px-glass-padding py-4 text-right">Avg. Duration</th>
+<th class="px-glass-padding py-4">Health Index</th>
+<th class="px-glass-padding py-4 text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5">
+<tr class="scanline-row transition-colors">
+<td class="px-glass-padding py-5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-fixed-dim">code</span>
+<span class="text-on-surface font-medium">Development</span>
+</div>
+</td>
+<td class="px-glass-padding py-5">
+<span class="flex items-center gap-2 text-green-400 text-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                                    STABLE
+                                </span>
+</td>
+<td class="px-glass-padding py-5 text-right font-data-metric text-primary-fixed">42m</td>
+<td class="px-glass-padding py-5">
+<div class="flex gap-1">
+<div class="w-4 h-1 bg-primary-fixed-dim"></div>
+<div class="w-4 h-1 bg-primary-fixed-dim"></div>
+<div class="w-4 h-1 bg-primary-fixed-dim"></div>
+<div class="w-4 h-1 bg-white/10"></div>
+</div>
+</td>
+<td class="px-glass-padding py-5 text-right">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-on-surface transition-colors">more_vert</button>
+</td>
+</tr>
+<tr class="scanline-row transition-colors">
+<td class="px-glass-padding py-5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">memory</span>
+<span class="text-on-surface font-medium">Build</span>
+</div>
+</td>
+<td class="px-glass-padding py-5">
+<span class="flex items-center gap-2 text-green-400 text-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                                    OPTIMIZED
+                                </span>
+</td>
+<td class="px-glass-padding py-5 text-right font-data-metric text-primary-fixed">8m</td>
+<td class="px-glass-padding py-5">
+<div class="flex gap-1">
+<div class="w-4 h-1 bg-primary-fixed-dim"></div>
+<div class="w-4 h-1 bg-primary-fixed-dim"></div>
+<div class="w-4 h-1 bg-primary-fixed-dim"></div>
+<div class="w-4 h-1 bg-primary-fixed-dim"></div>
+</div>
+</td>
+<td class="px-glass-padding py-5 text-right">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-on-surface transition-colors">more_vert</button>
+</td>
+</tr>
+<tr class="scanline-row transition-colors">
+<td class="px-glass-padding py-5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-tertiary-fixed-dim">science</span>
+<span class="text-on-surface font-medium">Test</span>
+</div>
+</td>
+<td class="px-glass-padding py-5">
+<span class="flex items-center gap-2 text-orange-400 text-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-orange-400 pulse-dot"></span>
+                                    HEAVY LOAD
+                                </span>
+</td>
+<td class="px-glass-padding py-5 text-right font-data-metric text-primary-fixed">24m</td>
+<td class="px-glass-padding py-5">
+<div class="flex gap-1">
+<div class="w-4 h-1 bg-orange-400"></div>
+<div class="w-4 h-1 bg-white/10"></div>
+<div class="w-4 h-1 bg-white/10"></div>
+<div class="w-4 h-1 bg-white/10"></div>
+</div>
+</td>
+<td class="px-glass-padding py-5 text-right">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-on-surface transition-colors">more_vert</button>
+</td>
+</tr>
+<tr class="scanline-row transition-colors">
+<td class="px-glass-padding py-5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-primary-container">rocket</span>
+<span class="text-on-surface font-medium">Deploy</span>
+</div>
+</td>
+<td class="px-glass-padding py-5">
+<span class="flex items-center gap-2 text-green-400 text-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                                    READY
+                                </span>
+</td>
+<td class="px-glass-padding py-5 text-right font-data-metric text-primary-fixed">12m</td>
+<td class="px-glass-padding py-5">
+<div class="flex gap-1">
+<div class="w-4 h-1 bg-primary-fixed-dim"></div>
+<div class="w-4 h-1 bg-primary-fixed-dim"></div>
+<div class="w-4 h-1 bg-white/10"></div>
+<div class="w-4 h-1 bg-white/10"></div>
+</div>
+</td>
+<td class="px-glass-padding py-5 text-right">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-on-surface transition-colors">more_vert</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+<!-- Liquid Metal Launch Modal (Simulated) -->
+<div class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6" id="launch-modal">
+<div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="this.parentElement.classList.add('hidden')"></div>
+<div class="glass-panel relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+
+<div class="relative p-10 flex flex-col items-center text-center">
+<div class="w-20 h-20 mb-6 bg-primary-fixed-dim/20 rounded-full flex items-center justify-center border border-primary-fixed-dim/30">
+<span class="material-symbols-outlined text-4xl text-primary-fixed-dim pulse-dot">rocket_launch</span>
+</div>
+<h2 class="font-display-lg text-headline-lg text-on-surface mb-2">Initialize Global Launch</h2>
+<p class="text-on-surface-variant mb-8 max-w-sm">Confirm deployment of 34,204 build artifacts across all active galactic regions.</p>
+<div class="flex gap-4 w-full">
+<button class="flex-1 py-4 glass-panel border-white/20 text-on-surface rounded-xl hover:bg-white/10 transition-all font-bold" onclick="this.closest('#launch-modal').classList.add('hidden')">Abort</button>
+<button class="flex-1 py-4 bg-primary-fixed-dim text-on-primary rounded-xl font-bold hover:shadow-[0_0_20px_rgba(0,219,231,0.5)] transition-all">Confirm Launch</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Micro-interaction Scripts -->
+<script>
+        // Simple ambient chart flicker for realism
+        const chartPath = document.querySelector('path[stroke="#00dbe7"]');
+        if (chartPath) {
+            setInterval(() => {
+                chartPath.style.opacity = 0.8 + Math.random() * 0.2;
+            }, 100);
+        }
+
+        // Mock interaction for bento cards
+        document.querySelectorAll('.glass-panel').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+                card.style.background = `radial-gradient(600px circle at ${x}px ${y}px, rgba(255,255,255,0.06), transparent 40%)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.background = 'rgba(255, 255, 255, 0.03)';
+            });
+        });
+    </script>
+</body></html>

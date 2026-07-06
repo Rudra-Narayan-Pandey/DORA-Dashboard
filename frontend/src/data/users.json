@@ -1,0 +1,7 @@
+[
+  { "id": "u1", "name": "Alexander Vance", "role": "Site Reliability Engineer", "status": "active", "avatar": "AV", "email": "alexander.v@nasa-control.io" },
+  { "id": "u2", "name": "Elena Rostova", "role": "Senior Frontend Architect", "status": "active", "avatar": "ER", "email": "elena.r@nasa-control.io" },
+  { "id": "u3", "name": "Marcus Kane", "role": "Lead DevOps Architect", "status": "active", "avatar": "MK", "email": "marcus.k@nasa-control.io" },
+  { "id": "u4", "name": "Sarah Connor", "role": "Security Engineer", "status": "dnd", "avatar": "SC", "email": "sarah.c@nasa-control.io" },
+  { "id": "u5", "name": "T-800 Cyberdyne", "role": "Automated Testing Agent", "status": "active", "avatar": "TA", "email": "agent@nasa-control.io" }
+]

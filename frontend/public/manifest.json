@@ -1,0 +1,16 @@
+{
+  "short_name": "DORA Grid",
+  "name": "DORA Metrics Telemetry Command Center",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": ".",
+  "background_color": "#050816",
+  "theme_color": "#00f2fe",
+  "display": "standalone",
+  "orientation": "portrait"
+}
