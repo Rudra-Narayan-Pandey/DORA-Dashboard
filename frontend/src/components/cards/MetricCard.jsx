@@ -15,7 +15,6 @@ const AnimatedCounter = ({ targetValue, suffix = '' }) => {
       return;
     }
 
-    let start = 0;
     const duration = 1200; // ms
     const startTime = performance.now();
 

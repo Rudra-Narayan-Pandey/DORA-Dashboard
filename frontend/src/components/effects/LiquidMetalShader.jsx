@@ -56,7 +56,7 @@ export const LiquidMetalShader = () => {
           float metal = sin(p.x * 2.0 + p.y * 2.0 + time);
           metal = smoothstep(-1.0, 1.0, metal);
           
-          // AetherOS Colors: Cyan (#00f2ff) and deep space
+          // Dashboard colors: cyan accents over a dark surface.
           vec3 baseColor = vec3(0.04, 0.06, 0.12);
           vec3 highlight = vec3(0.0, 0.86, 0.91);
           vec3 violet = vec3(0.19, 0.19, 0.75);

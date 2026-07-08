@@ -8,9 +8,10 @@ const api = axios.create({
   timeout: 10000,
 });
 
-// Request interceptor (e.g., for auth tokens)
+// Request interceptor (e.g., for auth tokens and dynamic API endpoints)
 api.interceptors.request.use(
   (config) => {
+    config.baseURL = localStorage.getItem('dora_api_url') || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     const token = localStorage.getItem('dora_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -18,6 +19,27 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor to unwrap standard success envelopes
+api.interceptors.response.use(
+  (response) => {
+    if (response.data && response.data.success === true && response.data.data !== undefined) {
+      response.data = response.data.data;
+    }
+    return response;
+  },
+  (error) => {
+    const payload = error.response?.data;
+    if (payload?.message) {
+      return Promise.reject({
+        ...payload,
+        message: payload.message,
+        status: error.response?.status
+      });
+    }
     return Promise.reject(error);
   }
 );

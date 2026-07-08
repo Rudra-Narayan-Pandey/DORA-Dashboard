@@ -43,7 +43,7 @@ export const showErrorToast = (message) => {
 
 export const showSystemToast = (message, title = "System Notification") => {
   toast(
-    (t) => (
+    (_t) => (
       <div className="flex flex-col gap-0.5">
         <span className="text-[10px] text-dora-cyan font-bold">{title}</span>
         <span>{message}</span>

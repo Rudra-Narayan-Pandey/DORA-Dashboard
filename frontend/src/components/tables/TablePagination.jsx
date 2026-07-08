@@ -16,7 +16,7 @@ export const TablePagination = ({
     <div className="flex items-center justify-between border-t border-dora-border/20 px-5 py-3 bg-slate-950/30 backdrop-blur-sm rounded-b-xl select-none">
       {/* Current Records range text */}
       <span className="text-[10px] font-mono text-dora-text-muted">
-        Telemetry logs <span className="text-dora-cyan font-bold">{total > 0 ? start : 0} - {end}</span> of <span className="text-dora-text-secondary font-bold">{total}</span>
+        Records <span className="text-dora-cyan font-bold">{total > 0 ? start : 0} - {end}</span> of <span className="text-dora-text-secondary font-bold">{total}</span>
       </span>
 
       {/* Prev/Next Buttons */}

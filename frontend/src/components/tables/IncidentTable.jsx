@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RiShieldCheckLine, RiAlertLine } from 'react-icons/ri';
+import { RiShieldCheckLine } from 'react-icons/ri';
 import TableHeader from './TableHeader';
 import TablePagination from './TablePagination';
 import StatusBadge from './StatusBadge';
@@ -13,8 +13,7 @@ export const IncidentTable = ({
   data = [],
   pagination = { total: 0, page: 1, limit: 5, pages: 1 },
   onPageChange,
-  onResolve,
-  loading
+  onResolve
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'detectedAt', direction: 'desc' });
 
@@ -38,7 +37,7 @@ export const IncidentTable = ({
     setSortConfig({ key, direction });
   };
 
-  const handleResolveAction = async (id, title) => {
+  const handleResolveAction = async (id) => {
     try {
       if (onResolve) {
         await onResolve(id);
@@ -93,11 +92,18 @@ export const IncidentTable = ({
           />
           
           <tbody className="divide-y divide-dora-border/10 font-mono text-xs text-dora-text">
-            {sortedData.map((i) => (
-              <tr 
-                key={i.id} 
-                className="hover:bg-slate-900/40 hover:text-dora-cyan transition-all duration-200 group border-b border-dora-border/5 last:border-b-0"
-              >
+            {sortedData.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="px-5 py-12 text-center text-dora-text-muted italic">
+                  No active incidents recorded for the selected telemetry parameters.
+                </td>
+              </tr>
+            ) : (
+              sortedData.map((i) => (
+                <tr 
+                  key={i.id} 
+                  className="hover:bg-slate-900/40 hover:text-dora-cyan transition-all duration-200 group border-b border-dora-border/5 last:border-b-0"
+                >
                 {/* ID */}
                 <td className="px-5 py-3.5 font-bold text-dora-rose text-glow-rose">
                   {i.id}
@@ -156,7 +162,7 @@ export const IncidentTable = ({
                     <Button
                       variant="glow"
                       size="sm"
-                      onClick={() => handleResolveAction(i.id, i.title)}
+                      onClick={() => handleResolveAction(i.id)}
                       className="py-1 px-2.5 text-[9px] uppercase tracking-wider font-bold flex items-center gap-1"
                     >
                       <RiShieldCheckLine className="w-3.5 h-3.5" />
@@ -170,7 +176,7 @@ export const IncidentTable = ({
                   )}
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </div>

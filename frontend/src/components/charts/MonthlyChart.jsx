@@ -5,7 +5,7 @@ import { chartGridConfig, chartXAxisConfig, chartYAxisConfig, customTooltipStyle
 
 export const MonthlyChart = ({ data = [] }) => {
   // Mock incidents count per month to correlate with deployment volumes
-  const chartData = data.map((d, i) => ({
+  const chartData = data.map((d) => ({
     ...d,
     incidents: Math.max(1, Math.round(d.deployments * (d.failureRate / 100)))
   }));

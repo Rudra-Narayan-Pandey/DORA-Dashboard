@@ -4,14 +4,12 @@ import TablePagination from './TablePagination';
 import Badge from '../ui/Badge';
 import Avatar from '../ui/Avatar';
 import { formatDateTime } from '../../utils/formatDate';
-import { formatDurationMinutes } from '../../utils/formatNumber';
 import { classNames } from '../../utils/helpers';
 
 export const WorkItemTable = ({
   data = [],
   pagination = { total: 0, page: 1, limit: 5, pages: 1 },
-  onPageChange,
-  loading
+  onPageChange
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
 

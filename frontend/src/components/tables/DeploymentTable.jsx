@@ -11,8 +11,7 @@ import { showSuccessToast } from '../feedback/ToastMessage';
 export const DeploymentTable = ({
   data = [],
   pagination = { total: 0, page: 1, limit: 5, pages: 1 },
-  onPageChange,
-  loading
+  onPageChange
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
   const [copiedId, setCopiedId] = useState(null);
@@ -21,7 +20,7 @@ export const DeploymentTable = ({
     { key: 'id', label: 'ID', sortable: true },
     { key: 'pipeline', label: 'Pipeline', sortable: true },
     { key: 'environment', label: 'Environment', sortable: true },
-    { key: 'triggeredBy', label: 'Operator', sortable: true },
+    { key: 'triggeredBy', label: 'Triggered By', sortable: true },
     { key: 'timestamp', label: 'Timestamp', sortable: true },
     { key: 'duration', label: 'Duration', sortable: true },
     { key: 'commit', label: 'Commit', sortable: false },
@@ -102,7 +101,7 @@ export const DeploymentTable = ({
                   </span>
                 </td>
                 
-                {/* Operator */}
+                {/* Triggered by */}
                 <td className="px-5 py-3.5 text-dora-text-secondary">
                   {d.triggeredBy}
                 </td>

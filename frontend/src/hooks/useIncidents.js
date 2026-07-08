@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import { FilterContext } from '../context/FilterContext';
 import { getIncidents, createIncident as apiCreateIncident, resolveIncident as apiResolveIncident } from '../services/incidentService';
 
@@ -10,7 +10,7 @@ export const useIncidents = (initialPage = 1, limit = 5) => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(initialPage);
 
-  const fetchIncidents = async () => {
+  const fetchIncidents = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -23,11 +23,11 @@ export const useIncidents = (initialPage = 1, limit = 5) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, page, limit]);
 
   useEffect(() => {
     fetchIncidents();
-  }, [filters.dateRange, filters.environment, filters.pipeline, filters.status, filters.search, page]);
+  }, [fetchIncidents]);
 
   useEffect(() => {
     setPage(1);

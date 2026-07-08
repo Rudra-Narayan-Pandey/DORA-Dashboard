@@ -7,12 +7,6 @@ export const StatusCard = ({
   stats = [], // [{ label, value, status }]
   className
 }) => {
-  const statusColorMap = {
-    online: 'text-dora-green shadow-neon-green bg-dora-green/10 border-dora-green/30',
-    degraded: 'text-dora-yellow shadow-neon-yellow bg-dora-yellow/10 border-dora-yellow/30',
-    offline: 'text-dora-rose shadow-neon-rose bg-dora-rose/10 border-dora-rose/30',
-  };
-
   return (
     <div className={classNames("glass-panel p-5 relative overflow-hidden flex flex-col gap-4 border-dora-cyan/10 shadow-neon-cyan/5", className)}>
       <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-dora-cyan/30 to-transparent" />

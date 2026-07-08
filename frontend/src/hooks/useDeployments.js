@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import { FilterContext } from '../context/FilterContext';
 import { getDeployments, triggerDeployment as apiTriggerDeployment } from '../services/deploymentService';
 
@@ -10,7 +10,7 @@ export const useDeployments = (initialPage = 1, limit = 5) => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(initialPage);
 
-  const fetchDeployments = async () => {
+  const fetchDeployments = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -23,11 +23,11 @@ export const useDeployments = (initialPage = 1, limit = 5) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, page, limit]);
 
   useEffect(() => {
     fetchDeployments();
-  }, [filters.dateRange, filters.environment, filters.pipeline, filters.status, filters.search, page]);
+  }, [fetchDeployments]);
 
   // Reset page when filters change
   useEffect(() => {

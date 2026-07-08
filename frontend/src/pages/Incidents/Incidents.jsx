@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   LineChart, 
   Line, 
@@ -12,7 +12,10 @@ import GlassCard from '../../components/cards/GlassCard';
 import useIncidents from '../../hooks/useIncidents';
 import Loader from '../../components/feedback/Loader';
 import ErrorState from '../../components/feedback/ErrorState';
+import { DashboardContext } from '../../context/DashboardContext';
 import dayjs from 'dayjs';
+import { formatDisplayName } from '../../utils/displayNames';
+import EmptyState from '../../components/feedback/EmptyState';
 
 export const Incidents = () => {
   const {
@@ -26,6 +29,7 @@ export const Incidents = () => {
     resolveIncident
   } = useIncidents(1, 5);
 
+  const { metrics, trends } = useContext(DashboardContext);
   const [activeChart, setActiveChart] = useState('mttr'); // mttr, rate
 
   if (loading && page === 1) {
@@ -61,15 +65,16 @@ export const Incidents = () => {
     }
   };
 
-  const chartData = [
-    { name: 'Mon', mttr: 42, rate: 3.2 },
-    { name: 'Tue', mttr: 38, rate: 2.8 },
-    { name: 'Wed', mttr: 35, rate: 2.9 },
-    { name: 'Thu', mttr: 31, rate: 2.5 },
-    { name: 'Fri', mttr: 28, rate: 2.1 },
-    { name: 'Sat', mttr: 25, rate: 1.8 },
-    { name: 'Sun', mttr: 22, rate: 1.5 }
-  ];
+  const chartData = (trends && trends.length > 0)
+    ? trends.map(t => ({
+        name: t.day || t.month,
+        mttr: t.mttr,
+        rate: t.failureRate
+      }))
+    : [];
+
+  const stabilityScore = metrics ? (100 - parseFloat(metrics.changeFailureRate.value || 0)).toFixed(0) : 0;
+  const mttrVal = metrics ? metrics.meanTimeToRestore.value : '0';
 
   return (
     <PageContainer>
@@ -138,7 +143,7 @@ export const Incidents = () => {
           <div className="font-data-metric text-display-lg text-error">
             {incidents.filter(i => i.status !== 'resolved').length}
           </div>
-          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono">STABLE - WITHIN THRESHOLD</p>
+          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono font-bold uppercase">{metrics?.changeFailureRate.rating === 'Elite' ? 'STABLE - WITHIN THRESHOLD' : 'DEVIATION DETECTED'}</p>
         </GlassCard>
 
         <GlassCard delay="0.3s" className="rounded-xl p-glass-padding">
@@ -147,8 +152,8 @@ export const Incidents = () => {
             <span className="text-[10px] font-label-mono text-secondary uppercase tracking-tighter">GRID HEALTH</span>
           </div>
           <div className="font-label-mono text-xs text-on-surface-variant mb-1 uppercase tracking-widest font-semibold">Stability Score</div>
-          <div className="font-data-metric text-display-lg text-secondary">98%</div>
-          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono">ELITE RATING SECURED</p>
+          <div className="font-data-metric text-display-lg text-secondary">{stabilityScore}%</div>
+          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono font-bold uppercase">{metrics?.changeFailureRate.rating} RATING SECURED</p>
         </GlassCard>
 
         <GlassCard delay="0.4s" className="rounded-xl p-glass-padding">
@@ -157,15 +162,15 @@ export const Incidents = () => {
             <span className="text-[10px] font-label-mono text-primary-fixed-dim uppercase tracking-tighter">Avg Restore Rate</span>
           </div>
           <div className="font-label-mono text-xs text-on-surface-variant mb-1 uppercase tracking-widest font-semibold">Median MTTR</div>
-          <div className="font-data-metric text-display-lg text-primary-fixed glow-text-cyan">18m</div>
-          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono">HIGH-PERFORMING STATUS</p>
+          <div className="font-data-metric text-display-lg text-primary-fixed glow-text-cyan">{mttrVal}m</div>
+          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono font-bold uppercase">{metrics?.meanTimeToRestore.rating}-PERFORMING STATUS</p>
         </GlassCard>
       </section>
 
       {/* Incidents Ledger Table */}
       <section className="glass-panel rounded-xl overflow-hidden reveal-up" style={{ animationDelay: '0.5s' }}>
         <div className="px-glass-padding py-6 border-b border-white/10 flex justify-between items-center">
-          <h3 className="font-headline-lg text-headline-lg text-on-surface">Recent Outages & Degredations</h3>
+          <h3 className="font-headline-lg text-headline-lg text-on-surface">Recent Outages & Degradations</h3>
         </div>
 
         <div className="overflow-x-auto">
@@ -182,9 +187,20 @@ export const Incidents = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs text-on-surface">
-              {incidents.map((i, idx) => (
+              {incidents.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-glass-padding py-12">
+                    <EmptyState
+                      title="No Azure Boards incidents found"
+                      message="The selected Azure DevOps window currently has no incident or bug work items matching the configured filters."
+                      actionLabel="Refresh Data"
+                      onAction={refetch}
+                    />
+                  </td>
+                </tr>
+              ) : incidents.map((i, idx) => (
                 <tr key={i.id || idx} className="scanline-row transition-colors hover:text-primary-fixed">
-                  <td className="px-glass-padding py-5 font-bold text-error">{i.id || `INC-409${idx}`}</td>
+                  <td className="px-glass-padding py-5 font-bold text-error">{i.id || '--'}</td>
                   <td className="px-glass-padding py-5">
                     <div className="flex flex-col gap-0.5">
                       <span className="font-medium text-on-surface">{i.title}</span>
@@ -198,7 +214,7 @@ export const Incidents = () => {
                       {i.severity?.toUpperCase()}
                     </span>
                   </td>
-                  <td className="px-glass-padding py-5 text-on-surface-variant">{i.pipeline}</td>
+                  <td className="px-glass-padding py-5 text-on-surface-variant">{i.pipeline ? formatDisplayName(i.pipeline, i.pipeline) : 'Unavailable'}</td>
                   <td className="px-glass-padding py-5 text-on-surface-variant">
                     {dayjs(i.detectedAt).format('YYYY-MM-DD HH:mm:ss')}
                   </td>

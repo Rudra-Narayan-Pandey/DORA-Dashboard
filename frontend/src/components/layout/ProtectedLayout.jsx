@@ -7,18 +7,65 @@ import AuroraBackground from '../effects/AuroraBackground';
 import LiquidMetalShader from '../effects/LiquidMetalShader';
 import ThreeDBox from '../effects/ThreeDBox';
 import { showSuccessToast, showErrorToast } from '../feedback/ToastMessage';
-import { PIPELINES, ENVIRONMENTS } from '../../utils/constants';
 import useDeployments from '../../hooks/useDeployments';
+import { getPipelines } from '../../services/pipelineService';
+import { getCurrentProfile } from '../../services/authService';
+import { formatDisplayName } from '../../utils/displayNames';
 
 export const ProtectedLayout = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { triggerDeployment } = useDeployments(1, 5);
+  const [profile, setProfile] = useState(null);
 
   // Form states
-  const [serviceNode, setServiceNode] = useState('Core-Engine-X');
-  const [environment, setEnvironment] = useState('PRODUCTION');
+  const [pipelines, setPipelines] = useState([]);
+  const [pipelinesLoading, setPipelinesLoading] = useState(false);
+  const [pipelinesError, setPipelinesError] = useState('');
+  const [selectedPipelineId, setSelectedPipelineId] = useState('');
+  const [environment, setEnvironment] = useState('Production');
   const [version, setVersion] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const selectedPipeline = pipelines.find((pipeline) => String(pipeline.id) === String(selectedPipelineId));
+
+  const profileName = formatDisplayName(profile?.displayName, 'Gargi and Rudra');
+  const profileRole = profile?.email || 'Server-side PAT';
+  const initials = profileName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'AZ';
+
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentProfile()
+      .then((data) => {
+        if (!cancelled) setProfile(data);
+      })
+      .catch(() => {
+        if (!cancelled) setProfile(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const loadPipelines = async () => {
+    setPipelinesLoading(true);
+    setPipelinesError('');
+    try {
+      const data = await getPipelines();
+      setPipelines(data);
+      setSelectedPipelineId((current) => current || (data[0]?.id ? String(data[0].id) : ''));
+    } catch (err) {
+      setPipelines([]);
+      setSelectedPipelineId('');
+      setPipelinesError(err?.message || 'Unable to load Azure pipeline definitions.');
+    } finally {
+      setPipelinesLoading(false);
+    }
+  };
 
   // Toggle body overflow on modal open
   useEffect(() => {
@@ -35,36 +82,48 @@ export const ProtectedLayout = () => {
     };
   }, [isModalOpen]);
 
+  useEffect(() => {
+    if (isModalOpen) {
+      loadPipelines();
+    }
+  }, [isModalOpen]);
+
   const handleLaunchSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedPipeline) {
+      showErrorToast('Queue request blocked: select a live Azure pipeline first.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await triggerDeployment({
-        version: version || 'build-v2.4.0-stable',
-        pipeline: serviceNode,
-        environment: environment.charAt(0) + environment.slice(1).toLowerCase(),
-        triggeredBy: 'Cmdr. Vane'
+      const result = await triggerDeployment({
+        version,
+        pipelineId: selectedPipeline.id,
+        pipeline: selectedPipeline.name,
+        environment,
+        triggeredBy: profileName
       });
       setIsModalOpen(false);
       setVersion('');
-      showSuccessToast(`Orbital Release command accepted: ${serviceNode} launched to ${environment}`);
+      showSuccessToast(`Release queued: ${formatDisplayName(result.pipeline, result.pipeline)} run ${result.runId || result.id} for ${environment}`);
     } catch (err) {
-      showErrorToast(`Launch aborted: ${err.message}`);
+      showErrorToast(`Queue request failed: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen w-screen bg-[#050816] text-[#dfe1f6] overflow-x-hidden font-body-md select-text">
+    <div className="relative min-h-screen w-full bg-[#050816] text-[#dfe1f6] overflow-x-hidden font-body-md select-text">
       {/* Background Layer */}
       <AuroraBackground />
 
       {/* SideNavBar */}
-      <Sidebar onLaunchModalTrigger={() => setIsModalOpen(true)} />
+      <Sidebar onLaunchModalTrigger={() => setIsModalOpen(true)} profile={profile} initials={initials} role={profileRole} />
 
       {/* TopNavBar */}
-      <Navbar />
+      <Navbar profile={profile} initials={initials} role={profileRole} />
 
       {/* Nested Route Pages */}
       <Outlet />
@@ -72,7 +131,7 @@ export const ProtectedLayout = () => {
       {/* Footer */}
       <Footer />
 
-      {/* WebGL-Shader Simulated Modal Overlay */}
+      {/* Release launch modal */}
       {isModalOpen && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center p-gutter backdrop-blur-3xl overflow-hidden modal-active"
@@ -94,10 +153,10 @@ export const ProtectedLayout = () => {
               <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
                 <div>
                   <h3 className="font-display-lg text-3xl text-primary-fixed tracking-tight">
-                    Initiate Orbital Release
+                    Queue Azure Pipeline
                   </h3>
                   <p className="font-label-mono text-xs text-on-surface-variant/60 mt-1 uppercase">
-                    Protocol: AETHER-SIGMA-9
+                    Run a real Azure DevOps pipeline using the server-side PAT
                   </p>
                 </div>
                 <button 
@@ -114,15 +173,23 @@ export const ProtectedLayout = () => {
                     <label className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-widest px-1">
                       Service Node
                     </label>
-                    <select 
-                      value={serviceNode}
-                      onChange={(e) => setServiceNode(e.target.value)}
+                    <select
+                      value={selectedPipelineId}
+                      onChange={(e) => setSelectedPipelineId(e.target.value)}
+                      disabled={pipelinesLoading || pipelines.length === 0}
                       className="w-full glass-input rounded-xl px-4 py-3 text-on-surface text-sm bg-surface-container-high/90 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 appearance-none cursor-pointer"
                     >
-                      {PIPELINES.map((p, idx) => (
-                        <option key={idx} className="bg-surface text-on-surface" value={p}>{p}</option>
+                      {pipelinesLoading && <option className="bg-surface text-on-surface" value="">Loading Azure pipelines...</option>}
+                      {!pipelinesLoading && pipelines.length === 0 && <option className="bg-surface text-on-surface" value="">No Azure pipelines found</option>}
+                      {pipelines.map((pipeline) => (
+                        <option key={pipeline.id} className="bg-surface text-on-surface" value={pipeline.id}>
+                          {pipeline.displayName || pipeline.name}
+                        </option>
                       ))}
                     </select>
+                    {pipelinesError && (
+                      <p className="text-[10px] text-error px-1">{pipelinesError}</p>
+                    )}
                   </div>
                   
                   <div className="space-y-2 flex flex-col">
@@ -134,9 +201,9 @@ export const ProtectedLayout = () => {
                       onChange={(e) => setEnvironment(e.target.value)}
                       className="w-full glass-input rounded-xl px-4 py-3 text-on-surface text-sm bg-surface-container-high/90 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 appearance-none cursor-pointer"
                     >
-                      <option className="bg-surface text-on-surface" value="PRODUCTION">PRODUCTION</option>
-                      <option className="bg-surface text-on-surface" value="CANARY">CANARY</option>
-                      <option className="bg-surface text-on-surface" value="STAGING">STAGING</option>
+                      <option className="bg-surface text-on-surface" value="Production">PRODUCTION</option>
+                      <option className="bg-surface text-on-surface" value="Canary">CANARY</option>
+                      <option className="bg-surface text-on-surface" value="Staging">STAGING</option>
                     </select>
                   </div>
                 </div>
@@ -149,7 +216,7 @@ export const ProtectedLayout = () => {
                     type="text"
                     value={version}
                     onChange={(e) => setVersion(e.target.value)}
-                    placeholder="e.g. build-v2.4.0-stable"
+                    placeholder="Azure run note, branch, or release version"
                     className="w-full glass-input rounded-xl px-4 py-3 text-on-surface text-sm placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
                     required
                   />
@@ -160,7 +227,7 @@ export const ProtectedLayout = () => {
                   <div>
                     <p className="text-xs font-medium text-primary-fixed">Automated Safety Checks Enabled</p>
                     <p className="text-[11px] text-on-surface-variant/60 leading-relaxed mt-1">
-                      System will perform canary analysis for 15 minutes post-deployment. Rollback triggered if MTTR exceeds 20min.
+                      The backend will queue the selected Azure pipeline using the server-side PAT. Azure DevOps remains the source of truth for approvals, gates, and run status.
                     </p>
                   </div>
                 </div>
@@ -175,6 +242,7 @@ export const ProtectedLayout = () => {
                   </button>
                   <button 
                     type="submit"
+                    disabled={submitting || pipelinesLoading || !selectedPipeline}
                     className="flex-1 py-4 bg-primary-container text-on-primary-container rounded-xl font-bold text-sm shadow-[0_0_30px_rgba(0,242,255,0.3)] hover:brightness-110 active:scale-95 transition-all"
                   >
                     {submitting ? 'ROUTING RELEASE...' : 'CONFIRM LAUNCH'}

@@ -11,7 +11,7 @@ export const SearchBar = ({ placeholder = "Search Ledgers..." }) => {
   // Sync debounced search back to global filters
   useEffect(() => {
     updateFilters({ search: debouncedValue });
-  }, [debouncedValue]);
+  }, [debouncedValue, updateFilters]);
 
   // Bind key shortcut '/' to focus search
   useEffect(() => {

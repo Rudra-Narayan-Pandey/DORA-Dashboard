@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   AreaChart, 
   Area, 
@@ -12,7 +12,9 @@ import GlassCard from '../../components/cards/GlassCard';
 import useDeployments from '../../hooks/useDeployments';
 import Loader from '../../components/feedback/Loader';
 import ErrorState from '../../components/feedback/ErrorState';
+import { DashboardContext } from '../../context/DashboardContext';
 import dayjs from 'dayjs';
+import { formatDisplayName } from '../../utils/displayNames';
 
 export const Deployments = () => {
   const { 
@@ -25,6 +27,7 @@ export const Deployments = () => {
     refetch 
   } = useDeployments(1, 5);
 
+  const { trends } = useContext(DashboardContext);
   const [activeChart, setActiveChart] = useState('volume'); // volume, speed
 
   if (loading && page === 1) {
@@ -61,15 +64,13 @@ export const Deployments = () => {
     }
   };
 
-  const chartData = [
-    { name: 'Mon', value: 12, duration: 210 },
-    { name: 'Tue', value: 19, duration: 180 },
-    { name: 'Wed', value: 15, duration: 240 },
-    { name: 'Thu', value: 24, duration: 190 },
-    { name: 'Fri', value: 29, duration: 150 },
-    { name: 'Sat', value: 11, duration: 120 },
-    { name: 'Sun', value: 8, duration: 100 }
-  ];
+  const chartData = (trends && trends.length > 0)
+    ? trends.map(t => ({
+        name: t.day || t.month,
+        value: t.deployments,
+        duration: Math.round(t.leadTime * 3600) // convert hours to seconds for Cycle Times
+      }))
+    : [];
 
   return (
     <PageContainer>
@@ -138,7 +139,7 @@ export const Deployments = () => {
       {/* Main Ledger Table */}
       <section className="glass-panel rounded-xl overflow-hidden reveal-up" style={{ animationDelay: '0.2s' }}>
         <div className="px-glass-padding py-6 border-b border-white/10 flex justify-between items-center">
-          <h3 className="font-headline-lg text-headline-lg text-on-surface">Recent Orbital Deployments</h3>
+          <h3 className="font-headline-lg text-headline-lg text-on-surface">Recent Azure Pipeline Runs</h3>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-xs font-label-mono text-on-surface-variant select-none">
               <span className="w-2 h-2 rounded-full bg-primary-container"></span> SUCCESS
@@ -164,22 +165,22 @@ export const Deployments = () => {
             <tbody className="divide-y divide-white/5 text-xs text-on-surface">
               {deployments.map((dep, idx) => (
                 <tr key={dep.id || idx} className="scanline-row transition-colors hover:text-primary-fixed">
-                  <td className="px-glass-padding py-5 font-bold text-primary-fixed">{dep.id || `RL-2405-A${idx}`}</td>
+                  <td className="px-glass-padding py-5 font-bold text-primary-fixed">{dep.id || `--`}</td>
                   <td className="px-glass-padding py-5">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded bg-primary-container/20 flex items-center justify-center">
                         <span className="material-symbols-outlined text-xs text-primary-container">cloud_queue</span>
                       </div>
-                      <span className="font-medium">{dep.pipeline || 'Core-Engine-X'}</span>
+                      <span className="font-medium">{dep.pipeline ? formatDisplayName(dep.pipeline, dep.pipeline) : 'Unavailable'}</span>
                     </div>
                   </td>
                   <td className="px-glass-padding py-5">
                     <span className="px-2 py-0.5 rounded bg-white/5 text-[10px] font-label-mono">
-                      {dep.environment ? dep.environment.toUpperCase() : 'PRODUCTION'}
+                      {dep.environment ? dep.environment.toUpperCase() : 'UNKNOWN'}
                     </span>
                   </td>
                   <td className="px-glass-padding py-5 text-on-surface-variant text-xs">
-                    {dep.timestamp ? dayjs(dep.timestamp).format('YYYY-MM-DD HH:mm:ss') : '2024-05-12 14:02:11'}
+                    {dep.timestamp ? dayjs(dep.timestamp).format('YYYY-MM-DD HH:mm:ss') : '--'}
                   </td>
                   <td className="px-glass-padding py-5">
                     <span className={`flex items-center gap-2 font-medium ${

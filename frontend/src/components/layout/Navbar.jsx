@@ -1,26 +1,55 @@
-import React, { useContext } from 'react';
-import { useLocation, NavLink } from 'react-router-dom';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { FilterContext } from '../../context/FilterContext';
+import api from '../../services/api';
+import { formatDisplayName } from '../../utils/displayNames';
 
-export const Navbar = () => {
+export const Navbar = ({ profile, initials = 'AZ', role = 'Server-side PAT' }) => {
   const location = useLocation();
   const { filters, updateFilters } = useContext(FilterContext);
+  const [connection, setConnection] = useState({ status: 'checking', label: 'Checking link' });
+
+  const checkConnection = useCallback(async () => {
+    try {
+      const response = await api.get('/health', {
+        timeout: 5000,
+        validateStatus: (statusCode) => statusCode < 600
+      });
+      const data = response.data;
+      setConnection({
+        status: data.azureConnected ? 'connected' : 'degraded',
+        label: data.azureConnected ? `${data.organization}/${data.project}` : data.diagnostics || 'Azure degraded'
+      });
+    } catch (error) {
+      setConnection({ status: 'offline', label: error?.message || 'Backend offline' });
+    }
+  }, []);
+
+  useEffect(() => {
+    checkConnection();
+    const interval = setInterval(checkConnection, 30000);
+    window.addEventListener('dora-settings-changed', checkConnection);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('dora-settings-changed', checkConnection);
+    };
+  }, [checkConnection]);
 
   const getPageHeaderDetails = () => {
     switch (location.pathname) {
       case '/deployments':
-        return { title: 'Deployment Center', links: ['Ledger', 'Pipelines'] };
+        return { title: 'Deployment Health', links: ['Runs', 'Pipelines'] };
       case '/analytics':
-        return { title: 'Lead Time Command', links: ['Telemetry', 'Logs', 'Alerts'] };
+        return { title: 'Lead Time', links: ['Trend', 'Stages'] };
       case '/incidents':
-        return { title: 'MTTR Telemetry', links: ['Incidents', 'Outages'] };
+        return { title: 'MTTR & Incidents', links: ['Incidents', 'Bugs'] };
       case '/reports':
-        return { title: 'Audit Reports', links: ['Generated', 'Grades'] };
+        return { title: 'DORA Report', links: ['Scorecard', 'Actions'] };
       case '/settings':
-        return { title: 'Telemetry Settings', links: ['HUD', 'Thresholds'] };
+        return { title: 'Settings', links: ['Connection', 'Thresholds'] };
       case '/':
       default:
-        return { title: 'Mission Control', links: ['Overview', 'HUD'] };
+        return { title: 'DORA Dashboard', links: ['Overview', 'Metrics'] };
     }
   };
 
@@ -47,13 +76,32 @@ export const Navbar = () => {
 
       {/* Right side search & operator detail info */}
       <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={checkConnection}
+          title={connection.label}
+          className="hidden lg:flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] uppercase tracking-wider text-on-surface-variant hover:bg-white/10"
+        >
+          <span className={`h-2 w-2 rounded-full ${
+            connection.status === 'connected' ? 'bg-emerald-400' :
+            connection.status === 'degraded' ? 'bg-yellow-400 animate-pulse' :
+            connection.status === 'checking' ? 'bg-yellow-400 animate-pulse' : 'bg-red-400'
+          }`} />
+          <span className={
+            connection.status === 'connected' ? 'text-emerald-400' :
+            connection.status === 'offline' ? 'text-red-400' : 'text-yellow-400'
+          }>
+            {connection.status === 'connected' ? 'Azure Live' : connection.status === 'offline' ? 'Offline' : 'Azure Degraded'}
+          </span>
+        </button>
+
         {/* Search */}
         <div className="relative group">
           <input 
             type="text"
             value={filters.search}
             onChange={(e) => updateFilters({ search: e.target.value })}
-            placeholder="Search Telemetry..."
+            placeholder="Search Azure data..."
             className="bg-white/5 border-white/10 rounded-full pl-10 pr-4 py-1 text-sm focus:ring-1 focus:ring-primary-fixed/50 w-64 transition-all duration-300 text-on-surface focus:outline-none"
           />
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">
@@ -74,15 +122,11 @@ export const Navbar = () => {
         {/* Operator Profile details */}
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="font-label-mono text-label-mono text-primary-fixed">ADM. SYNC-01</p>
-            <p className="text-[10px] text-on-surface-variant/60 leading-none">COMMANDER</p>
+            <p className="font-label-mono text-label-mono text-primary-fixed max-w-40 truncate">{formatDisplayName(profile?.displayName, 'Gargi and Rudra')}</p>
+            <p className="text-[10px] text-on-surface-variant/60 leading-none max-w-40 truncate">{role}</p>
           </div>
-          <div className="w-10 h-10 rounded-full border border-primary-fixed/30 p-0.5 overflow-hidden">
-            <img 
-              alt="Commander Avatar" 
-              className="w-full h-full object-cover rounded-full" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbXEjfPaNXtfrhgoGhd1EHHzyoZu5eNIx8Dqy6HiYM69vS4K4lNpjOCexnJE-SPV-C_4UA0oZSz88nkcKHn2ItIQxO4PjeFUYRsFfubsNueE3e9W2yt_D30rkxca0fhooudqK6T3ZFzCAzXQX2920d_zRrWCG5gOQDiFPoWxCAyFAYHnkHnFJEq6io-OKg9VnnI1qUaL1irJXrkWciz2P8ZtvN3Mt0LS4JrXjvyCj-fAgVGJLqWBb9ng"
-            />
+          <div className="w-10 h-10 rounded-full border border-primary-fixed/30 bg-primary-container/20 flex items-center justify-center text-xs font-bold text-primary-fixed">
+            {initials}
           </div>
         </div>
       </div>

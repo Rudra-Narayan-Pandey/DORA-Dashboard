@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+/* eslint-disable react/only-export-components */
+import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { FilterContext } from './FilterContext';
 import { getMetrics, getTrends } from '../services/metricsService';
 import { getDeployments } from '../services/deploymentService';
@@ -17,7 +18,7 @@ export const DashboardProvider = ({ children }) => {
   const [deploymentsData, setDeploymentsData] = useState(null);
   const [incidentsData, setIncidentsData] = useState(null);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -42,12 +43,47 @@ export const DashboardProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   // Re-fetch when global filters change
   useEffect(() => {
     fetchDashboardData();
-  }, [filters.dateRange, filters.environment]); // Only re-fetch core metrics on date/env updates
+  }, [fetchDashboardData]);
+
+  // ── Auto-refresh polling ──
+  const intervalRef = useRef(null);
+
+  const setupAutoRefresh = useCallback(() => {
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    const enabled = localStorage.getItem('dora_auto_refresh') !== 'false';
+    if (!enabled) return;
+
+    const minutes = parseInt(localStorage.getItem('dora_refresh_interval') || '5', 10);
+    const ms = (isNaN(minutes) || minutes < 1 ? 5 : minutes) * 60 * 1000;
+
+    intervalRef.current = setInterval(() => {
+      fetchDashboardData();
+    }, ms);
+  }, [fetchDashboardData]);
+
+  useEffect(() => {
+    setupAutoRefresh();
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [setupAutoRefresh]);
+
+  // Listen for settings changes to re-configure auto-refresh
+  useEffect(() => {
+    const handleSettingsChange = () => setupAutoRefresh();
+    window.addEventListener('dora-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('dora-settings-changed', handleSettingsChange);
+  }, [setupAutoRefresh]);
 
   return (
     <DashboardContext.Provider

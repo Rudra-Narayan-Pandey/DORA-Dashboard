@@ -32,7 +32,7 @@ export const Reports = () => {
       exportReportData(report, format);
       showSuccessToast(`Exporting raw telemetry as ${format.toUpperCase()}`);
     } catch (err) {
-      showErrorToast("Export error encountered.");
+      showErrorToast(`Export error encountered: ${err.message}`);
     }
   };
 
@@ -119,13 +119,13 @@ export const Reports = () => {
               <div className="mt-2 flex items-baseline justify-between">
                 <span className="text-2xl font-bold text-on-surface">{report.successfulDeployments} / {report.totalDeployments}</span>
                 <span className="text-xs text-green-400 font-bold">
-                  {((report.successfulDeployments / report.totalDeployments) * 100).toFixed(1)}% OK
+                  {report.totalDeployments > 0 ? ((report.successfulDeployments / report.totalDeployments) * 100).toFixed(1) : '0.0'}% OK
                 </span>
               </div>
             </div>
 
             <div className="glass-panel p-5 flex flex-col justify-between border-white/10 rounded-xl">
-              <span className="text-[10px] text-on-surface-variant uppercase tracking-wider">Telemetry Export</span>
+              <span className="text-[10px] text-on-surface-variant uppercase tracking-wider">Report Export</span>
               <button 
                 onClick={() => handleExport('json')}
                 className="w-full mt-2 py-2.5 border border-white/10 hover:bg-white/5 rounded-lg text-xs font-bold transition-all text-primary-fixed-dim"
@@ -142,10 +142,10 @@ export const Reports = () => {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Deployment Frequency', value: '24.5 / day', grade: report.grades.deploymentFrequency },
-                { label: 'Lead Time to Changes', value: '1.2 hours', grade: report.grades.leadTime },
-                { label: 'Change Failure Rate', value: '0.8%', grade: report.grades.changeFailureRate },
-                { label: 'MTTR Recovery Time', value: '18 minutes', grade: report.grades.meanTimeToRestore },
+                { label: 'Deployment Frequency', value: report.metrics?.deploymentFrequency || 'No data', grade: report.grades.deploymentFrequency },
+                { label: 'Lead Time to Changes', value: report.metrics?.leadTime || 'No data', grade: report.grades.leadTime },
+                { label: 'Change Failure Rate', value: report.metrics?.changeFailureRate || 'No data', grade: report.grades.changeFailureRate },
+                { label: 'MTTR Recovery Time', value: report.metrics?.meanTimeToRestore || 'No data', grade: report.grades.meanTimeToRestore },
               ].map((card, idx) => (
                 <div key={idx} className="border border-white/5 bg-white/5 rounded-lg p-4 flex items-center justify-between">
                   <div className="flex flex-col gap-1">
@@ -164,7 +164,7 @@ export const Reports = () => {
           <div className="glass-panel p-glass-padding rounded-xl flex flex-col gap-4 border-white/10">
             <h3 className="text-xs uppercase tracking-widest text-secondary font-bold border-b border-white/10 pb-3 flex items-center gap-2">
               <span className="material-symbols-outlined text-sm">auto_awesome</span>
-              <span>Aether AI Directives</span>
+              <span>Recommended Actions</span>
             </h3>
             <div className="space-y-3">
               {report.recommendations.map((rec, idx) => (

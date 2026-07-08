@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { RiRadio2Line } from 'react-icons/ri';
-import { formatDateTime, getRelativeTime } from '../../utils/formatDate';
+import { getRelativeTime } from '../../utils/formatDate';
 import { getStatusColorClasses } from '../../utils/statusColor';
 import { classNames } from '../../utils/helpers';
 

@@ -1,3 +1,4 @@
+/* eslint-disable react/only-export-components */
 import React, { createContext, useState } from 'react';
 
 export const FilterContext = createContext();

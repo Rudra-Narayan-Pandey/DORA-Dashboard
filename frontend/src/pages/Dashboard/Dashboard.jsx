@@ -15,9 +15,13 @@ dayjs.extend(utc);
 import PageContainer from '../../components/layout/PageContainer';
 import GlassCard from '../../components/cards/GlassCard';
 import { DashboardContext } from '../../context/DashboardContext';
+import { FilterContext } from '../../context/FilterContext';
 import { showSuccessToast } from '../../components/feedback/ToastMessage';
 import { exportReportData } from '../../services/reportService';
-import { COLORS } from '../../utils/colors';
+import Loader from '../../components/feedback/Loader';
+import ErrorState from '../../components/feedback/ErrorState';
+import { gradeDeploymentFrequency, gradeLeadTime, gradeChangeFailureRate, gradeMTTR } from '../../utils/doraGrading';
+import { formatDisplayName } from '../../utils/displayNames';
 
 // Counter component for HUD numbers
 const AnimatedCounter = ({ targetValue, decimals = 1 }) => {
@@ -29,7 +33,6 @@ const AnimatedCounter = ({ targetValue, decimals = 1 }) => {
       setValue(targetValue);
       return;
     }
-    let start = 0;
     const duration = 1200;
     const startTime = performance.now();
 
@@ -53,26 +56,39 @@ const AnimatedCounter = ({ targetValue, decimals = 1 }) => {
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const { metrics, trends, deploymentsData, refreshData } = useContext(DashboardContext);
+  const { metrics, trends, deploymentsData, refreshData, loading, error } = useContext(DashboardContext);
+  const { filters, updateFilters } = useContext(FilterContext);
 
   // UTC clock ticker state
-  const [utcTime, setUtcTime] = useState(dayjs().utc().format('HH:mm:ss'));
-  const [stardate, setStardate] = useState('2405.12');
+  const [utcTime, setUtcTime] = useState(dayjs().utc().format('YYYY-MM-DD HH:mm:ss'));
 
   useEffect(() => {
     const clock = setInterval(() => {
-      setUtcTime(dayjs().utc().format('HH:mm:ss'));
-      // Simulate ticking stardate decimals slowly
-      const seconds = new Date().getSeconds();
-      setStardate((2405 + (seconds / 100)).toFixed(2));
+      setUtcTime(dayjs().utc().format('YYYY-MM-DD HH:mm:ss'));
     }, 1000);
     return () => clearInterval(clock);
   }, []);
 
+  if (loading && !metrics) {
+    return (
+      <PageContainer className="flex items-center justify-center min-h-[80vh]">
+        <Loader size="lg" text="Loading Azure DevOps metrics..." />
+      </PageContainer>
+    );
+  }
+
+  if (error && !metrics) {
+    return (
+      <PageContainer>
+        <ErrorState onRetry={refreshData} message={error} />
+      </PageContainer>
+    );
+  }
+
   const handleExport = () => {
     if (deploymentsData) {
       exportReportData(deploymentsData.data, 'json');
-      showSuccessToast("Raw telemetry data stream exported.");
+      showSuccessToast("Deployment data exported.");
     }
   };
 
@@ -94,21 +110,50 @@ export const Dashboard = () => {
     }
   };
 
-  // Static Sparkline path calculations to match exact index.html SVGs
-  const dfSparkline = "M0,25 Q10,20 20,22 T40,15 T60,25 T80,10 T100,5";
-  const ltSparkline = "M0,10 Q20,15 40,12 T70,18 T100,10";
-  const cfrSparkline = "M0,5 L20,10 L40,8 L60,15 L80,12 L100,14";
-  const mttrSparkline = "M0,25 L30,10 L50,22 L80,5 L100,12";
+  const chartData = trends || [];
+  const chartLabelKey = chartData[0]?.month ? 'month' : 'day';
+  const chartLabels = chartData.map((point) => point[chartLabelKey]).filter(Boolean);
 
-  // Chart data from trends mock or defaults
-  const chartData = trends || [
-    { day: "Mon", deployments: 14 },
-    { day: "Tue", deployments: 22 },
-    { day: "Wed", deployments: 18 },
-    { day: "Thu", deployments: 25 },
-    { day: "Fri", deployments: 29 },
-    { day: "Sat", deployments: 11 },
-    { day: "Sun", deployments: 9 }
+  const buildSparklinePath = (values = []) => {
+    const numericValues = values.map(Number).filter((value) => Number.isFinite(value));
+    if (numericValues.length === 0) return '';
+
+    const max = Math.max(...numericValues);
+    const min = Math.min(...numericValues);
+    const range = max - min || 1;
+    const step = numericValues.length > 1 ? 100 / (numericValues.length - 1) : 100;
+
+    return numericValues
+      .map((value, index) => {
+        const x = index * step;
+        const y = 28 - ((value - min) / range) * 24;
+        return `${index === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+  };
+
+  const buildSparklineFill = (path) => (path ? `${path} V30 H0 Z` : '');
+  const dfSparkline = buildSparklinePath(metrics?.deploymentFrequency?.sparkline);
+  const ltSparkline = buildSparklinePath(metrics?.leadTime?.sparkline);
+  const cfrSparkline = buildSparklinePath(metrics?.changeFailureRate?.sparkline);
+  const mttrSparkline = buildSparklinePath(metrics?.meanTimeToRestore?.sparkline);
+
+  const insightCards = [
+    {
+      tone: 'primary',
+      title: metrics?.leadTime?.trendDirection === 'down' ? 'Lead Time Improving' : 'Lead Time Watch',
+      copy: `${metrics?.leadTime?.rating || 'Unrated'} lead time at ${metrics?.leadTime?.value || 0} ${metrics?.leadTime?.unit || 'hours'} with ${Math.abs(metrics?.leadTime?.trend || 0)} change versus the previous window.`
+    },
+    {
+      tone: 'error',
+      title: metrics?.changeFailureRate?.trendDirection === 'up' ? 'Failure Rate Rising' : 'Failure Rate Controlled',
+      copy: `${metrics?.changeFailureRate?.rating || 'Unrated'} change failure rate at ${metrics?.changeFailureRate?.value || 0}${metrics?.changeFailureRate?.unit || '%'} across the selected telemetry window.`
+    },
+    {
+      tone: 'secondary',
+      title: metrics?.deploymentFrequency?.trendDirection === 'up' ? 'Deployment Cadence Up' : 'Deployment Cadence Steady',
+      copy: `${metrics?.deploymentFrequency?.rating || 'Unrated'} deployment frequency at ${metrics?.deploymentFrequency?.value || 0} ${metrics?.deploymentFrequency?.unit || 'deploys/day'}.`
+    }
   ];
 
   return (
@@ -117,13 +162,13 @@ export const Dashboard = () => {
       <header className="flex justify-between items-end mb-10 reveal-up" style={{ animationDelay: '0.1s' }}>
         <div>
           <h2 className="font-display-lg text-display-lg text-primary tracking-tight">
-            Mission Control Overview
+            DORA Metrics Overview
           </h2>
           <div className="flex items-center gap-3 text-on-surface-variant font-label-mono mt-2">
             <span className="w-2 h-2 rounded-full bg-primary-container pulse-dot"></span>
             <span>UTC {utcTime}</span>
             <span className="opacity-30">|</span>
-            <span>STARDATE: {stardate}</span>
+            <span>{metrics ? 'LIVE AZURE DATA' : 'AWAITING TELEMETRY'}</span>
           </div>
         </div>
         
@@ -141,7 +186,7 @@ export const Dashboard = () => {
             className="px-6 py-2 bg-secondary-container text-on-secondary-container rounded-full text-sm font-medium hover:brightness-110 transition-all flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-sm">download</span>
-            Export Telemetry
+            Export Deployments
           </button>
         </div>
       </header>
@@ -158,7 +203,7 @@ export const Dashboard = () => {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="font-data-metric text-[36px] text-primary">
-              <AnimatedCounter targetValue={metrics?.deploymentFrequency.value || 24.5} decimals={1} />
+              <AnimatedCounter targetValue={metrics?.deploymentFrequency?.value || 0} decimals={1} />
             </span>
             <span className="font-label-mono text-xs text-on-primary-container">/ DAY</span>
           </div>
@@ -166,11 +211,11 @@ export const Dashboard = () => {
           <div className="h-12 mt-4">
             <svg className="w-full h-full stroke-primary-container fill-none stroke-2 animate-pulse" viewBox="0 0 100 30">
               <path d={dfSparkline}></path>
-              <path className="fill-primary-container/10 stroke-none" d="M0,25 Q10,20 20,22 T40,15 T60,25 T80,10 T100,5 V30 H0 Z"></path>
+              <path className="fill-primary-container/10 stroke-none" d={buildSparklineFill(dfSparkline)}></path>
             </svg>
           </div>
-          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono">
-            ↑ {metrics?.deploymentFrequency.trend || 12}% FROM PREV INTERVAL
+          <p className={`text-xs mt-3 font-label-mono ${gradeDeploymentFrequency(metrics?.deploymentFrequency?.value || 0).isGood ? 'text-primary-fixed/60' : 'text-error/60'}`}>
+            {gradeDeploymentFrequency(metrics?.deploymentFrequency?.value || 0).label} · ↑ {metrics?.deploymentFrequency?.trend || 0}%
           </p>
         </GlassCard>
 
@@ -184,7 +229,7 @@ export const Dashboard = () => {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="font-data-metric text-[36px] text-secondary-fixed-dim">
-              <AnimatedCounter targetValue={metrics?.leadTime.value || 1.2} decimals={1} />
+              <AnimatedCounter targetValue={metrics?.leadTime?.value || 0} decimals={1} />
             </span>
             <span className="font-label-mono text-xs text-secondary-fixed">HOURS</span>
           </div>
@@ -192,11 +237,11 @@ export const Dashboard = () => {
           <div className="h-12 mt-4">
             <svg className="w-full h-full stroke-secondary-fixed-dim fill-none stroke-2" viewBox="0 0 100 30">
               <path d={ltSparkline}></path>
-              <path className="fill-secondary-container/10 stroke-none" d="M0,10 Q20,15 40,12 T70,18 T100,10 V30 H0 Z"></path>
+              <path className="fill-secondary-container/10 stroke-none" d={buildSparklineFill(ltSparkline)}></path>
             </svg>
           </div>
-          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono">
-            ↓ {Math.abs(metrics?.leadTime.trend || 0.4)}h OPTIMIZED
+          <p className={`text-xs mt-3 font-label-mono ${gradeLeadTime(metrics?.leadTime?.value || 0).isGood ? 'text-secondary-fixed/60' : 'text-error/60'}`}>
+            {gradeLeadTime(metrics?.leadTime?.value || 0).label} · ↓ {Math.abs(metrics?.leadTime?.trend || 0)}h
           </p>
         </GlassCard>
 
@@ -210,7 +255,7 @@ export const Dashboard = () => {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="font-data-metric text-[36px] text-error">
-              <AnimatedCounter targetValue={metrics?.changeFailureRate.value || 0.8} decimals={1} />
+              <AnimatedCounter targetValue={metrics?.changeFailureRate?.value || 0} decimals={1} />
             </span>
             <span className="font-label-mono text-xs text-error/60">%</span>
           </div>
@@ -218,11 +263,11 @@ export const Dashboard = () => {
           <div className="h-12 mt-4">
             <svg className="w-full h-full stroke-error fill-none stroke-2" viewBox="0 0 100 30">
               <path d={cfrSparkline}></path>
-              <path className="fill-error-container/10 stroke-none" d="M0,5 L20,10 L40,8 L60,15 L80,12 L100,14 V30 H0 Z"></path>
+              <path className="fill-error-container/10 stroke-none" d={buildSparklineFill(cfrSparkline)}></path>
             </svg>
           </div>
-          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono">
-            STABLE - WITHIN THRESHOLD
+          <p className={`text-xs mt-3 font-label-mono ${gradeChangeFailureRate(metrics?.changeFailureRate?.value || 0).isGood ? 'text-on-surface-variant/60' : 'text-error/60'}`}>
+            {gradeChangeFailureRate(metrics?.changeFailureRate?.value || 0).label}
           </p>
         </GlassCard>
 
@@ -236,7 +281,7 @@ export const Dashboard = () => {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="font-data-metric text-[36px] text-tertiary-fixed-dim">
-              <AnimatedCounter targetValue={metrics?.meanTimeToRestore.value || 18} decimals={0} />
+              <AnimatedCounter targetValue={metrics?.meanTimeToRestore?.value || 0} decimals={0} />
             </span>
             <span className="font-label-mono text-xs text-tertiary-fixed">MINS</span>
           </div>
@@ -244,11 +289,11 @@ export const Dashboard = () => {
           <div className="h-12 mt-4">
             <svg className="w-full h-full stroke-tertiary-fixed-dim fill-none stroke-2" viewBox="0 0 100 30">
               <path d={mttrSparkline}></path>
-              <path className="fill-tertiary-container/10 stroke-none" d="M0,25 L30,10 L50,22 L80,5 L100,12 V30 H0 Z"></path>
+              <path className="fill-tertiary-container/10 stroke-none" d={buildSparklineFill(mttrSparkline)}></path>
             </svg>
           </div>
-          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono">
-            HIGH-PERFORMING STATUS
+          <p className={`text-xs mt-3 font-label-mono ${gradeMTTR(metrics?.meanTimeToRestore?.value || 0).isGood ? 'text-tertiary-fixed/60' : 'text-error/60'}`}>
+            {gradeMTTR(metrics?.meanTimeToRestore?.value || 0).label}
           </p>
         </GlassCard>
       </section>
@@ -260,9 +305,22 @@ export const Dashboard = () => {
           <div className="flex justify-between items-center mb-8">
             <h3 className="font-headline-lg text-xl text-primary-fixed">Deployment Velocity Trends</h3>
             <div className="flex gap-2">
-              <button type="button" className="px-3 py-1 rounded bg-white/10 text-xs font-label-mono hover:bg-white/20 transition-colors">7D</button>
-              <button type="button" className="px-3 py-1 rounded bg-primary-container text-on-primary-container text-xs font-label-mono">30D</button>
-              <button type="button" className="px-3 py-1 rounded bg-white/10 text-xs font-label-mono hover:bg-white/20 transition-colors">90D</button>
+              {[
+                { label: '7D', value: '7d' },
+                { label: '30D', value: '30d' },
+                { label: '90D', value: '90d' }
+              ].map((range) => (
+                <button
+                  key={range.value}
+                  type="button"
+                  onClick={() => updateFilters({ dateRange: range.value })}
+                  className={`px-3 py-1 rounded text-xs font-label-mono transition-colors ${
+                    filters.dateRange === range.value ? 'bg-primary-container text-on-primary-container' : 'bg-white/10 hover:bg-white/20'
+                  }`}
+                >
+                  {range.label}
+                </button>
+              ))}
             </div>
           </div>
           
@@ -278,7 +336,7 @@ export const Dashboard = () => {
                 </defs>
                 <CartesianGrid stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
                 <XAxis 
-                  dataKey={trends ? "month" : "day"} 
+                  dataKey={chartLabelKey} 
                   stroke="rgba(255, 255, 255, 0.3)" 
                   fontSize={10} 
                   tickLine={false} 
@@ -305,40 +363,30 @@ export const Dashboard = () => {
             </ResponsiveContainer>
           </div>
           <div className="flex justify-between mt-4 font-label-mono text-[10px] text-on-surface-variant/40">
-            <span>MAY 01</span><span>MAY 07</span><span>MAY 14</span><span>MAY 21</span><span>MAY 28</span><span>JUN 01</span>
+            {chartLabels.length > 0 ? chartLabels.map((label) => <span key={label}>{label}</span>) : <span>No trend labels available</span>}
           </div>
         </GlassCard>
 
-        {/* Right: Aether AI Insights */}
+        {/* Right: Metric Insights */}
         <GlassCard delay="0.7s" className="flex flex-col overflow-hidden relative p-glass-padding rounded-2xl">
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-secondary/15 blur-3xl rounded-full"></div>
           
           <div className="flex items-center gap-2 mb-6">
             <span className="material-symbols-outlined text-secondary">auto_awesome</span>
-            <h3 className="font-headline-lg text-xl text-secondary-fixed">Aether AI Insights</h3>
+            <h3 className="font-headline-lg text-xl text-secondary-fixed">Metric Insights</h3>
           </div>
 
           <div className="space-y-4 flex-1">
-            <div className="p-4 rounded-xl bg-white/5 border-l-4 border-primary-container">
-              <p className="font-label-mono text-[10px] text-primary-container mb-1 uppercase">System Optimization</p>
-              <p className="text-sm text-on-surface/80 leading-relaxed">
-                Lead time has decreased by 14% this week. Consider promoting 'Core-Engine-X' build.
-              </p>
-            </div>
-            
-            <div className="p-4 rounded-xl bg-white/5 border-l-4 border-error">
-              <p className="font-label-mono text-[10px] text-error mb-1 uppercase">Anomaly Detected</p>
-              <p className="text-sm text-on-surface/80 leading-relaxed">
-                Microservice 'Hyperion-Gate' showing unusual latency spikes. Recommend throttling.
-              </p>
-            </div>
-            
-            <div className="p-4 rounded-xl bg-white/5 border-l-4 border-secondary">
-              <p className="font-label-mono text-[10px] text-secondary mb-1 uppercase">Stability Advisory</p>
-              <p className="text-sm text-on-surface/80 leading-relaxed">
-                Success rate for Alpha-7 remains at 100%. Protocol suggests expanding rollout window.
-              </p>
-            </div>
+            {insightCards.map((insight) => (
+              <div key={insight.title} className={`p-4 rounded-xl bg-white/5 border-l-4 ${
+                insight.tone === 'primary' ? 'border-primary-container' : insight.tone === 'error' ? 'border-error' : 'border-secondary'
+              }`}>
+                <p className={`font-label-mono text-[10px] mb-1 uppercase ${
+                  insight.tone === 'primary' ? 'text-primary-container' : insight.tone === 'error' ? 'text-error' : 'text-secondary'
+                }`}>{insight.title}</p>
+                <p className="text-sm text-on-surface/80 leading-relaxed">{insight.copy}</p>
+              </div>
+            ))}
           </div>
 
           <button 
@@ -346,15 +394,15 @@ export const Dashboard = () => {
             onClick={() => navigate('/reports')}
             className="w-full mt-6 py-3 border border-white/10 rounded-xl text-xs font-label-mono hover:bg-white/5 transition-colors uppercase tracking-wider text-primary-fixed-dim"
           >
-            Generate Full Telemetry Report
+            Generate DORA Report
           </button>
         </GlassCard>
       </section>
 
-      {/* Bottom Row: Recent Orbital Deployments */}
+      {/* Bottom Row: Recent Deployments */}
       <section className="glass-panel rounded-2xl overflow-hidden reveal-up" style={{ animationDelay: '0.8s' }}>
         <div className="p-6 border-b border-white/10 flex justify-between items-center">
-          <h3 className="font-headline-lg text-xl text-on-surface">Recent Orbital Deployments</h3>
+          <h3 className="font-headline-lg text-xl text-on-surface">Recent Azure Pipeline Runs</h3>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-xs font-label-mono text-on-surface-variant select-none">
               <span className="w-2 h-2 rounded-full bg-primary-container"></span> SUCCESS
@@ -378,43 +426,51 @@ export const Dashboard = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 font-mono text-xs">
-              {(deploymentsData?.data || []).map((dep, idx) => (
-                <tr key={dep.id || idx} className="scanline-hover group border-b border-white/5 hover:text-primary-fixed transition-colors">
-                  <td className="px-6 py-4 font-label-mono text-primary-fixed">{dep.id || `RL-2405-A${idx}`}</td>
-                  <td className="px-6 py-4 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-primary-container/20 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-xs text-primary-container">cloud_queue</span>
-                    </div>
-                    <span className="font-medium">{dep.pipeline || 'Core-Engine-X'}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-0.5 rounded bg-white/5 text-[10px] font-label-mono">
-                      {dep.environment ? dep.environment.toUpperCase() : 'PRODUCTION'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-on-surface-variant font-label-mono text-xs">
-                    {dep.timestamp ? dayjs(dep.timestamp).format('YYYY-MM-DD HH:mm:ss') : '2024-05-12 14:02:11'}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`flex items-center gap-2 font-medium ${
-                      dep.status === 'success' ? 'text-primary-fixed' : dep.status === 'failed' ? 'text-error' : 'text-secondary'
-                    }`}>
-                      <span className={`w-2 h-2 rounded-full ${
-                        dep.status === 'success' ? 'bg-primary-container' : dep.status === 'failed' ? 'bg-error' : 'bg-secondary-container animate-pulse'
-                      }`}></span>
-                      {dep.status === 'success' ? 'Success' : dep.status === 'failed' ? 'Failed' : 'Active'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => navigate('/deployments')}
-                      className="p-2 rounded-full hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <span className="material-symbols-outlined text-lg">more_vert</span>
-                    </button>
+              {(deploymentsData?.data || []).length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant/60 font-mono text-xs">
+                    No Azure pipeline runs found in this selected window.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                (deploymentsData?.data || []).map((dep, idx) => (
+                  <tr key={dep.id || idx} className="scanline-hover group border-b border-white/5 hover:text-primary-fixed transition-colors">
+                    <td className="px-6 py-4 font-label-mono text-primary-fixed">{dep.id || `--`}</td>
+                    <td className="px-6 py-4 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded bg-primary-container/20 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-xs text-primary-container">cloud_queue</span>
+                      </div>
+                      <span className="font-medium">{dep.pipeline ? formatDisplayName(dep.pipeline, dep.pipeline) : 'Unavailable'}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-0.5 rounded bg-white/5 text-[10px] font-label-mono">
+                        {dep.environment ? dep.environment.toUpperCase() : 'UNKNOWN'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-on-surface-variant font-label-mono text-xs">
+                      {dep.timestamp ? dayjs(dep.timestamp).format('YYYY-MM-DD HH:mm:ss') : '--'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`flex items-center gap-2 font-medium ${
+                        dep.status === 'success' ? 'text-primary-fixed' : dep.status === 'failed' ? 'text-error' : 'text-secondary'
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full ${
+                          dep.status === 'success' ? 'bg-primary-container' : dep.status === 'failed' ? 'bg-error' : 'bg-secondary-container animate-pulse'
+                        }`}></span>
+                        {dep.status === 'success' ? 'Success' : dep.status === 'failed' ? 'Failed' : 'Active'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button 
+                        onClick={() => navigate('/deployments')}
+                        className="p-2 rounded-full hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <span className="material-symbols-outlined text-lg">more_vert</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -424,7 +480,7 @@ export const Dashboard = () => {
             onClick={() => navigate('/deployments')}
             className="text-xs font-label-mono text-primary-fixed-dim hover:underline uppercase tracking-widest"
           >
-            Load More Telemetry History
+            View Deployment History
           </button>
         </div>
       </section>
