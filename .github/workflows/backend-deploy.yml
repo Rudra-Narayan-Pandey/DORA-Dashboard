@@ -51,4 +51,4 @@ jobs:
           app-name: 'dora-dashboard-api'
           slot-name: 'Production'
           package: ./backend-app
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BDF02EC95A2844679E81AFDD85A783FF }}
