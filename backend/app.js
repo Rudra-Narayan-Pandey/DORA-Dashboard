@@ -48,7 +48,9 @@ const devOrigins = [
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (env.NODE_ENV === 'development' || devOrigins.includes(origin) || origin === env.FRONTEND_URL) {
+    // Allow local development, explicitly configured frontend URL, and any Azure Static Web Apps domain
+    const isAzureStaticWebApp = origin.endsWith('.azurestaticapps.net');
+    if (env.NODE_ENV === 'development' || devOrigins.includes(origin) || origin === env.FRONTEND_URL || isAzureStaticWebApp) {
       return callback(null, true);
     }
     return callback(new Error('CORS policy violation'), false);
