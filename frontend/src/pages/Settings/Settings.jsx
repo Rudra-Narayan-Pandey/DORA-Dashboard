@@ -85,13 +85,14 @@ export const Settings = () => {
         validateStatus: (status) => status < 600
       });
       const data = res.data;
-      setConnectionStatus(data.azureConnected ? 'connected' : 'failed');
+      const isConnected = data.checks?.azureConnectivity === 'UP';
+      setConnectionStatus(isConnected ? 'connected' : 'failed');
       setConnectionDetails(data);
       setLastChecked(new Date());
-      if (data.azureConnected) {
+      if (isConnected) {
         showSuccessToast('Connection verified — Azure DevOps link active');
       } else {
-        showErrorToast(`Connection failed: ${data.diagnostics}`);
+        showErrorToast(`Connection failed: ${data.diagnostics || 'Azure connection degraded'}`);
       }
     } catch (err) {
       setConnectionStatus('failed');
