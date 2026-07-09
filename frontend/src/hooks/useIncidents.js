@@ -24,6 +24,8 @@ export const useIncidents = (initialPage = 1, limit = 5) => {
       setLoading(false);
     }
   }, [filters, page, limit]);
+
+  useEffect(() => {
     fetchIncidents();
   }, [fetchIncidents]);
 
