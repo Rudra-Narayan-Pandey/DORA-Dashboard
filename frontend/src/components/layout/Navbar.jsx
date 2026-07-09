@@ -16,9 +16,10 @@ export const Navbar = ({ profile, initials = 'AZ', role = 'Server-side PAT' }) =
         validateStatus: (statusCode) => statusCode < 600
       });
       const data = response.data;
+      const isConnected = data.checks?.azureConnectivity === 'UP';
       setConnection({
-        status: data.azureConnected ? 'connected' : 'degraded',
-        label: data.azureConnected ? `${data.organization}/${data.project}` : data.diagnostics || 'Azure degraded'
+        status: isConnected ? 'connected' : 'degraded',
+        label: isConnected ? `${data.organization}/${data.project}` : data.diagnostics || 'Azure degraded'
       });
     } catch (error) {
       setConnection({ status: 'offline', label: error?.message || 'Backend offline' });
