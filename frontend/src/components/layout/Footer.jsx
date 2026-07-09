@@ -17,7 +17,8 @@ export const Footer = () => {
       const elapsed = Math.round(performance.now() - start);
       const data = res.data;
 
-      if (data.azureConnected) {
+      const isConnected = data.checks?.azureConnectivity === 'UP';
+      if (isConnected) {
         setStatus('Operational');
         setStatusColor('text-primary-fixed');
       } else {
