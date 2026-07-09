@@ -126,8 +126,8 @@ stages:
 
           - task: AzureStaticWebApp@0
             inputs:
-              app_location: '/'
-              output_location: '$(System.ArtifactsDirectory)/frontend-build'
+              app_location: '$(System.ArtifactsDirectory)/frontend-build'
+              skip_app_build: true
               azure_static_web_apps_api_token: $(SWA_DEPLOYMENT_TOKEN) # User must configure this
             displayName: "Deploy to Azure Static Web Apps"
 
