@@ -78,8 +78,9 @@ export const Settings = () => {
     setConnectionDetails(null);
     try {
       const baseUrl = apiUrl || DEFAULTS.apiUrl;
-      const res = await api.get('/health', {
-        baseURL: baseUrl,
+      // Strip trailing slash if present, then append /health
+      const fullUrl = `${baseUrl.replace(/\/$/, '')}/health`;
+      const res = await api.get(fullUrl, {
         timeout: 8000,
         validateStatus: (status) => status < 600
       });
