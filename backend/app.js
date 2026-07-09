@@ -114,7 +114,7 @@ app.get('/api/health', async (req, res) => {
     // Ping connectiondata endpoint to check PAT connectivity
     // We can use the coreClient from our azure config with the system PAT if req.getCoreClient isn't available
     const azureClients = require('./src/config/azure');
-    const client = azureClients.createCoreClient(env.AZURE_PAT);
+    const client = azureClients.coreClient;
     await client.get('/_apis/connectiondata');
     azureConnected = true;
     isAuthValid = true;
