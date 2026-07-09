@@ -61,10 +61,10 @@ app.use(cors({
 }));
 app.use(compression());
 
-// Rate Limiter: 100 requests per 15 minutes per IP (1000 in development to prevent test throttling)
+// Rate Limiter: 1500 requests per 15 minutes per IP to support aggressive auto-refresh polling
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: env.NODE_ENV === 'development' ? 1000 : 100,
+  max: env.NODE_ENV === 'development' ? 5000 : 1500,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
