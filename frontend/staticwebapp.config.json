@@ -1,10 +1,7 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/assets/*.{png,jpg,gif,css,js}", "/api/*"]
-  },
-  "globalHeaders": {
-    "content-security-policy": "default-src https: 'unsafe-eval' 'unsafe-inline'; object-src 'none'"
+    "exclude": ["*.{css,js,png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}", "/api/*"]
   },
   "mimeTypes": {
     ".json": "application/json"
