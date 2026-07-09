@@ -5,7 +5,7 @@ import { showSuccessToast, showErrorToast, showSystemToast } from '../../compone
 import api from '../../services/api';
 
 const DEFAULTS = {
-  apiUrl: 'http://localhost:5000/api',
+  apiUrl: import.meta.env.VITE_API_URL || '',
   autoRefresh: true,
   refreshInterval: '5',
   slackAlerts: false,
@@ -363,20 +363,6 @@ export const Settings = () => {
               <span className="material-symbols-outlined text-sm">settings</span>
               <span>General OS Configs</span>
             </h3>
-
-            {/* Theme Toggle */}
-            <div className="flex items-center justify-between py-2 border-b border-white/5">
-              <div className="flex flex-col gap-0.5">
-                <span className="font-bold uppercase tracking-wider">Dashboard Theme</span>
-                <span className="text-[10px] text-on-surface-variant/60">Switch dark OS background and console styles</span>
-              </div>
-              <ToggleButton
-                active={theme === 'dark'}
-                onClick={toggleTheme}
-                activeLabel="DARK MODE"
-                inactiveLabel="LIGHT MODE"
-              />
-            </div>
 
             {/* Auto Refresh */}
             <div className="flex items-center justify-between py-2 border-b border-white/5">
