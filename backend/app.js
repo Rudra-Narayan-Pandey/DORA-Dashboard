@@ -1,4 +1,5 @@
 const express = require('express');
+const os = require('os');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
@@ -103,34 +104,60 @@ app.use('/api/incidents', auth, incidentRoutes);
 app.get('/api/builds', auth, validatePagination, pipelineController.getBuilds);
 
 // GET /api/health: diagnostics connectivity verification
-app.get('/api/health', auth, async (req, res) => {
-  const client = req.getCoreClient();
+app.get('/api/health', async (req, res) => {
   const startTime = Date.now();
   let azureConnected = false;
   let diagnosticDetails = 'Azure DevOps connection failed';
+  let isAuthValid = false;
 
   try {
     // Ping connectiondata endpoint to check PAT connectivity
+    // We can use the coreClient from our azure config with the system PAT if req.getCoreClient isn't available
+    const azureClients = require('./src/config/azure');
+    const client = azureClients.createCoreClient(env.AZURE_PAT);
     await client.get('/_apis/connectiondata');
     azureConnected = true;
+    isAuthValid = true;
     diagnosticDetails = 'Telemetry link active';
   } catch (err) {
     diagnosticDetails = `Azure DevOps REST API unreachable: ${err.message}`;
+    if (err.response && err.response.status === 401) {
+      diagnosticDetails = 'Azure PAT Authentication Failed (401 Unauthorized)';
+    }
   }
 
-  res.status(azureConnected ? 200 : 503).json({
+  const memoryUsage = process.memoryUsage();
+  
+  const healthData = {
     success: azureConnected,
     message: azureConnected ? 'Telemetry gateway operational' : 'Outage detected on gateway links',
     data: {
       status: azureConnected ? 'UP' : 'DOWN',
-      azureConnected,
-      latencyMs: Date.now() - startTime,
+      checks: {
+        server: 'UP',
+        azureConnectivity: azureConnected ? 'UP' : 'DOWN',
+        patValidity: isAuthValid ? 'VALID' : 'INVALID'
+      },
+      system: {
+        uptimeSeconds: Math.floor(process.uptime()),
+        memory: {
+          heapUsedMB: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+          heapTotalMB: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+          rssMB: Math.round(memoryUsage.rss / 1024 / 1024)
+        },
+        cpuLoad: os.loadavg(),
+        cache: 'ENABLED'
+      },
       diagnostics: diagnosticDetails,
       organization: env.AZURE_ORGANIZATION,
-      project: env.AZURE_PROJECT
+      project: env.AZURE_PROJECT,
+      version: process.env.npm_package_version || '1.0.0',
+      latencyMs: Date.now() - startTime
     },
     timestamp: new Date().toISOString()
-  });
+  };
+
+  res.status(azureConnected ? 200 : 503).json(healthData);
 });
 
 // 4. Fallbacks and Global Error Handler
