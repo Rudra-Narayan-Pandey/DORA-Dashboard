@@ -15,8 +15,8 @@ export const useIncidents = (initialPage = 1, limit = 5) => {
     setError(null);
     try {
       const result = await getIncidents({ ...filters, page, limit });
-      setIncidents(result.data);
-      setPagination(result.pagination);
+      setIncidents(result?.data || []);
+      setPagination(result?.pagination || { total: 0, page, limit, pages: 0 });
     } catch (err) {
       console.error(err);
       setError('Failed to query incidents ledger.');
@@ -24,8 +24,6 @@ export const useIncidents = (initialPage = 1, limit = 5) => {
       setLoading(false);
     }
   }, [filters, page, limit]);
-
-  useEffect(() => {
     fetchIncidents();
   }, [fetchIncidents]);
 

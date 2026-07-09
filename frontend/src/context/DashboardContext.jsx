@@ -24,19 +24,19 @@ export const DashboardProvider = ({ children }) => {
     try {
       // Fetch metrics (incorporates time window/filters)
       const metricsRes = await getMetrics(filters);
-      setMetrics(metricsRes);
+      setMetrics(typeof metricsRes === 'object' && metricsRes !== null ? metricsRes : null);
 
       // Fetch trends (weekly/monthly based on dateRange selection)
       const period = filters.dateRange === 'all' ? 'monthly' : 'weekly';
       const trendsRes = await getTrends(period, filters);
-      setTrends(trendsRes);
+      setTrends(Array.isArray(trendsRes) ? trendsRes : []);
 
       // Fetch first page of deployments & incidents
       const deploymentsRes = await getDeployments({ ...filters, page: 1, limit: 5 });
-      setDeploymentsData(deploymentsRes);
+      setDeploymentsData(typeof deploymentsRes === 'object' && deploymentsRes !== null ? deploymentsRes : null);
 
       const incidentsRes = await getIncidents({ ...filters, page: 1, limit: 5 });
-      setIncidentsData(incidentsRes);
+      setIncidentsData(typeof incidentsRes === 'object' && incidentsRes !== null ? incidentsRes : null);
     } catch (err) {
       console.error("Dashboard context load error:", err);
       setError("Failed to synchronize with control center feed.");

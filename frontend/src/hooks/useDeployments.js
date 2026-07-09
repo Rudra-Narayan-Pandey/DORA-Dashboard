@@ -15,8 +15,8 @@ export const useDeployments = (initialPage = 1, limit = 5) => {
     setError(null);
     try {
       const result = await getDeployments({ ...filters, page, limit });
-      setDeployments(result.data);
-      setPagination(result.pagination);
+      setDeployments(result?.data || []);
+      setPagination(result?.pagination || { total: 0, page, limit, pages: 0 });
     } catch (err) {
       console.error(err);
       setError('Failed to fetch deployment ledger.');
