@@ -7,9 +7,6 @@ const { getDateRangeStart } = require('../utils/dateUtils');
 // Cache incidents for 1 minute (60 seconds)
 const INCIDENTS_TTL = 60;
 
-// Cache incidents for 1 minute (60 seconds)
-const INCIDENTS_TTL = 60;
-
 /**
  * Maps frontend severity string (critical, major, minor) to Azure DevOps Priority integer (1, 2, 3).
  */

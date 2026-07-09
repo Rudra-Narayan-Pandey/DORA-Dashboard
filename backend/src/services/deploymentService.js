@@ -6,9 +6,6 @@ const logger = require('../utils/logger');
 // Cache deployments list for 1 minute (60 seconds)
 const DEPLOYMENTS_TTL = 60;
 
-// Cache deployments list for 1 minute (60 seconds)
-const DEPLOYMENTS_TTL = 60;
-
 const deploymentService = {
   /**
    * Retrieves and merges deployments from Classic Release Deployments and YAML Builds.
