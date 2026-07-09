@@ -45,6 +45,15 @@ jobs:
           name: backend-app
           path: ./backend-app
 
+      - name: Debug Secret Injection
+        run: |
+          if [ -z "${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BDF02EC95A2844679E81AFDD85A783FF }}" ]; then
+            echo "::error::The secret AZUREAPPSERVICE_PUBLISHPROFILE_BDF02EC95A2844679E81AFDD85A783FF is EMPTY! Please make sure it is added as a Repository Secret and not a Repository Variable."
+            exit 1
+          else
+            echo "Secret is successfully populated."
+          fi
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
