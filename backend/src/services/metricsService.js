@@ -333,6 +333,7 @@ const metricsService = {
           return {
             month: monthLabel,
             deployments: monthDeps.length,
+            incidents: monthIncidents.length,
             leadTime: leadTimeAvg,
             failureRate,
             mttr: mttrAvg
@@ -387,6 +388,7 @@ const metricsService = {
           return {
             day: dayLabel,
             deployments: dayDeps.length,
+            incidents: dayIncidents.length,
             leadTime: leadTimeAvg,
             failureRate,
             mttr: mttrAvg

@@ -6,8 +6,8 @@ const logger = require('../utils/logger');
 // Cache deployments list for 1 minute (60 seconds)
 const DEPLOYMENTS_TTL = 60;
 
-// Local in-memory store for simulated deployments (falls back when Azure DevOps write fails)
-const localDeployments = [];
+// Cache deployments list for 1 minute (60 seconds)
+const DEPLOYMENTS_TTL = 60;
 
 const deploymentService = {
   /**
@@ -20,31 +20,13 @@ const deploymentService = {
    */
   getDeployments: async (req, filters = {}) => {
     const cacheKey = generateKey(req.azurePat, 'deployments_ledger', filters);
+  getDeployments: async (req, filters = {}) => {
+    const cacheKey = generateKey(req.azurePat, 'deployments_ledger', filters);
     const cachedData = cacheService.get(cacheKey);
-
-    // Dynamic update for simulated active runs: transition them to success after 45s
-    const now = Date.now();
-    localDeployments.forEach(d => {
-      if (d.status === 'active') {
-        const ageMs = now - new Date(d.timestamp).getTime();
-        if (ageMs > 45000) {
-          d.status = 'success';
-          d.duration = Math.floor(45 + Math.random() * 45); // 45-90 seconds
-        }
-      }
-    });
 
     if (cachedData) {
       logger.info('Serving deployments list from cache.');
-      // Update cache data with mutated local deployments status if cached
-      const mergedCache = {
-        ...cachedData,
-        data: cachedData.data.map(d => {
-          const localMatch = localDeployments.find(ld => ld.id === d.id);
-          return localMatch ? localMatch : d;
-        })
-      };
-      return mergedCache;
+      return cachedData;
     }
 
     const startTime = Date.now();
@@ -179,8 +161,8 @@ const deploymentService = {
           };
         });
 
-      // Merge both classic, YAML, and local simulated deployments
-      list = [...localDeployments, ...mappedClassic, ...mappedYaml];
+      // Merge both classic and YAML deployments
+      list = [...mappedClassic, ...mappedYaml];
 
       // Sort deployments descending by timestamp
       list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -348,26 +330,8 @@ const deploymentService = {
               url: run._links?.web?.href || run.url
             };
           } catch (runError) {
-            // Fall back to local queue simulation if write is blocked by auth/scope constraints
-            logger.warn(`Azure DevOps pipeline queue unauthorized. Falling back to local simulation: ${runError.message}`);
-            
-            const simulatedRun = {
-              id: `RUN-${Math.floor(100000 + Math.random() * 900000)}`,
-              runId: Math.floor(1000 + Math.random() * 9000),
-              version: version || `v1.0.${Math.floor(Math.random() * 100)}`,
-              environment,
-              pipeline: matchPipeline.name,
-              pipelineId: matchPipeline.id,
-              status: 'active',
-              triggeredBy: deploymentData.triggeredBy || 'Gargi and Rudra',
-              timestamp: new Date().toISOString(),
-              duration: 0,
-              commit: 'a1b2c3d',
-              rollbacked: false,
-              url: '#'
-            };
-            localDeployments.push(simulatedRun);
-            return simulatedRun;
+            logger.warn(`Azure DevOps pipeline queue unauthorized or failed: ${runError.message}`);
+            throw runError;
           }
         }
       }
@@ -406,47 +370,14 @@ const deploymentService = {
             url: releaseObj._links?.web?.href || releaseObj.url
           };
         } catch (releaseError) {
-          logger.warn(`Azure DevOps classic release trigger failed. Falling back to local simulation: ${releaseError.message}`);
-          
-          const simulatedRelease = {
-            id: `REL-${Math.floor(100000 + Math.random() * 900000)}`,
-            runId: Math.floor(1000 + Math.random() * 9000),
-            version: version || `release-${matchRelease.id}`,
-            environment,
-            pipeline: matchRelease.name,
-            pipelineId: matchRelease.id,
-            status: 'active',
-            triggeredBy: deploymentData.triggeredBy || 'Gargi and Rudra',
-            timestamp: new Date().toISOString(),
-            duration: 0,
-            commit: '',
-            rollbacked: false,
-            url: '#'
-          };
-          localDeployments.push(simulatedRelease);
-          return simulatedRelease;
+          logger.warn(`Azure DevOps classic release trigger failed: ${releaseError.message}`);
+          throw releaseError;
         }
       }
 
-      // If neither matching pipeline nor release found, create a completely local run as dynamic fallback
-      logger.warn(`No matching definition found. Queued dynamic pipeline run locally: ${pipeline}`);
-      const simulatedRun = {
-        id: `RUN-${Math.floor(100000 + Math.random() * 900000)}`,
-        runId: Math.floor(1000 + Math.random() * 9000),
-        version: version || `v1.0.${Math.floor(Math.random() * 100)}`,
-        environment,
-        pipeline: pipeline || 'Dynamic-Service',
-        pipelineId: pipelineId || 99,
-        status: 'active',
-        triggeredBy: deploymentData.triggeredBy || 'Gargi and Rudra',
-        timestamp: new Date().toISOString(),
-        duration: 0,
-        commit: 'a1b2c3d',
-        rollbacked: false,
-        url: '#'
-      };
-      localDeployments.push(simulatedRun);
-      return simulatedRun;
+      // If neither matching pipeline nor release found, fail
+      logger.warn(`No matching definition found for pipeline: ${pipeline}`);
+      throw new Error(`Pipeline definition '${pipeline}' not found in Azure DevOps.`);
     } catch (error) {
       logger.error('Failed to trigger deployment', error);
       throw error;

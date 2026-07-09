@@ -4,10 +4,10 @@ import { COLORS } from '../../utils/colors';
 import { chartGridConfig, chartXAxisConfig, chartYAxisConfig, customTooltipStyle } from '../../utils/chartConfig';
 
 export const MonthlyChart = ({ data = [] }) => {
-  // Mock incidents count per month to correlate with deployment volumes
+  // Use actual incidents count from the backend payload
   const chartData = data.map((d) => ({
     ...d,
-    incidents: Math.max(1, Math.round(d.deployments * (d.failureRate / 100)))
+    incidents: d.incidents || 0
   }));
 
   return (

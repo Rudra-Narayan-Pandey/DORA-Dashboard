@@ -7,8 +7,8 @@ const { getDateRangeStart } = require('../utils/dateUtils');
 // Cache incidents for 1 minute (60 seconds)
 const INCIDENTS_TTL = 60;
 
-// Local in-memory store for simulated incidents (falls back when Azure DevOps write fails)
-const localIncidents = [];
+// Cache incidents for 1 minute (60 seconds)
+const INCIDENTS_TTL = 60;
 
 /**
  * Maps frontend severity string (critical, major, minor) to Azure DevOps Priority integer (1, 2, 3).
@@ -48,25 +48,7 @@ const incidentService = {
 
     if (cachedData) {
       logger.info('Serving incidents ledger from cache.');
-      // Merge with current state of local incidents
-      const mergedCache = {
-        ...cachedData,
-        data: [
-          ...localIncidents.filter(li => {
-            // Re-apply filters for local cached items
-            if (filters.severity && filters.severity !== 'All' && li.severity.toLowerCase() !== filters.severity.toLowerCase()) return false;
-            if (filters.status && filters.status !== 'All' && li.status.toLowerCase() !== filters.status.toLowerCase()) return false;
-            if (filters.environment && filters.environment !== 'All' && li.environment.toLowerCase() !== filters.environment.toLowerCase()) return false;
-            if (filters.search) {
-              const q = filters.search.toLowerCase();
-              return li.id.toLowerCase().includes(q) || li.title.toLowerCase().includes(q) || li.pipeline.toLowerCase().includes(q);
-            }
-            return true;
-          }),
-          ...cachedData.data.filter(d => !localIncidents.some(li => li.id === d.id))
-        ]
-      };
-      return mergedCache;
+      return cachedData;
     }
 
     const client = req.getCoreClient();
@@ -134,8 +116,8 @@ const incidentService = {
         };
       });
 
-      // Merge both classic, Azure, and local simulated incidents
-      let list = [...localIncidents, ...mappedAzure];
+      // Return mapped Azure incidents
+      let list = [...mappedAzure];
 
       // Apply dateRange filter if present
       if (filters.dateRange) {
@@ -276,23 +258,8 @@ const incidentService = {
           actionItems: []
         };
       } catch (witError) {
-        logger.warn(`Azure DevOps work item creation failed; falling back to local simulation: ${witError.message}`);
-        
-        const simulatedIncident = {
-          id: `INC-${Math.floor(100000 + Math.random() * 900000)}`,
-          title: title,
-          severity: severity,
-          status: 'investigating',
-          pipeline: pipeline || 'Dynamic-Service',
-          environment: environment || 'Production',
-          detectedAt: new Date().toISOString(),
-          resolvedAt: null,
-          duration: null,
-          description: description || '',
-          actionItems: []
-        };
-        localIncidents.push(simulatedIncident);
-        return simulatedIncident;
+        logger.warn(`Azure DevOps work item creation failed: ${witError.message}`);
+        throw witError;
       }
     } catch (error) {
       logger.error('Failed to create incident bug', error);
@@ -313,20 +280,6 @@ const incidentService = {
 
     // Strip out the "INC-" prefix if present
     const numericId = incidentId.replace('INC-', '');
-
-    // Check if the incident is local/simulated
-    const localMatch = localIncidents.find(li => li.id === incidentId);
-    if (localMatch) {
-      localMatch.status = 'resolved';
-      localMatch.resolvedAt = new Date().toISOString();
-      localMatch.duration = Math.max(1, Math.floor((new Date(localMatch.resolvedAt) - new Date(localMatch.detectedAt)) / 60000));
-      
-      cacheService.invalidate(req.azurePat, 'incidents_ledger');
-      cacheService.invalidate(req.azurePat, 'dashboard_summary');
-      cacheService.invalidate(req.azurePat, 'metrics');
-      
-      return localMatch;
-    }
 
     // JSON Patch to resolve work item. We try "Resolved" first. 
     const patchBody = [
@@ -369,21 +322,8 @@ const incidentService = {
             }
           );
         } catch (closeErr) {
-          logger.warn(`Azure DevOps work item resolution failed; resolving locally for ID ${incidentId}: ${closeErr.message}`);
-          // Simulate local resolution fallback
-          return {
-            id: incidentId,
-            title: 'Outage/Incident',
-            severity: 'critical',
-            status: 'resolved',
-            pipeline: 'Core-Service',
-            environment: 'Production',
-            detectedAt: new Date(Date.now() - 30 * 60000).toISOString(),
-            resolvedAt: new Date().toISOString(),
-            duration: 30,
-            description: '',
-            actionItems: []
-          };
+          logger.warn(`Azure DevOps work item resolution failed for ID ${incidentId}: ${closeErr.message}`);
+          throw closeErr;
         }
       }
 
