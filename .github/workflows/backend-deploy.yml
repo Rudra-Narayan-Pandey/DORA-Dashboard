@@ -55,7 +55,7 @@ jobs:
           fi
 
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v2
         with:
           app-name: 'dora-dashboard-api'
           slot-name: 'Production'
