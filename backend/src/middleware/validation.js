@@ -4,7 +4,7 @@
  */
 
 const validateMetricsFilters = (req, res, next) => {
-  const { dateRange, environment } = req.query;
+  const { dateRange } = req.query;
   const validRanges = ['7d', '30d', '90d', 'all'];
 
   if (dateRange !== undefined && !validRanges.includes(dateRange.toLowerCase())) {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageContainer from '../../components/layout/PageContainer';
 import Loader from '../../components/feedback/Loader';
 import { generateReport, exportReportData } from '../../services/reportService';
@@ -8,22 +8,31 @@ import { showSuccessToast, showErrorToast } from '../../components/feedback/Toas
 export const Reports = () => {
   const [range, setRange] = useState(DATE_RANGES.LAST_7D);
   const [environment, setEnvironment] = useState(ENVIRONMENTS.PRODUCTION);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // default to true for auto-compile on mount
   const [report, setReport] = useState(null);
 
-  const handleCompileReport = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const fetchReport = async (rangeScope, envScope, quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
-      const res = await generateReport({ range, environment });
+      const res = await generateReport({ range: rangeScope, environment: envScope });
       setReport(res);
-      showSuccessToast("DevOps performance report compiled successfully.");
+      if (!quiet) showSuccessToast("DevOps performance report compiled successfully.");
     } catch (err) {
       console.error(err);
       showErrorToast("Failed to compile performance report.");
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
+  };
+
+  // Compile report automatically on mount and whenever filters change
+  useEffect(() => {
+    fetchReport(range, environment, false);
+  }, [range, environment]);
+
+  const handleCompileReport = (e) => {
+    e.preventDefault();
+    fetchReport(range, environment, false);
   };
 
   const handleExport = (format) => {
@@ -47,6 +56,8 @@ export const Reports = () => {
       case 'C':
       case 'C+':
         return 'text-orange-400 border-orange-400/30 bg-orange-400/5';
+      case 'N/A':
+        return 'text-on-surface-variant/60 border-white/5 bg-white/5';
       case 'D':
       default:
         return 'text-error border-error/30 bg-error/5';
@@ -136,7 +147,7 @@ export const Reports = () => {
           </div>
 
           {/* DORA grades grid */}
-          <div className="glass-panel p-glass-padding rounded-xl flex flex-col gap-4 border-white/10">
+          <div id="reports-scorecard" className="glass-panel p-glass-padding rounded-xl flex flex-col gap-4 border-white/10">
             <h3 className="text-xs uppercase tracking-widest text-on-surface-variant font-bold border-b border-white/10 pb-3">
               DORA Scorecard Breakdown
             </h3>
@@ -161,7 +172,7 @@ export const Reports = () => {
           </div>
 
           {/* Recommendations / AI directives */}
-          <div className="glass-panel p-glass-padding rounded-xl flex flex-col gap-4 border-white/10">
+          <div id="reports-recommendations" className="glass-panel p-glass-padding rounded-xl flex flex-col gap-4 border-white/10">
             <h3 className="text-xs uppercase tracking-widest text-secondary font-bold border-b border-white/10 pb-3 flex items-center gap-2">
               <span className="material-symbols-outlined text-sm">auto_awesome</span>
               <span>Recommended Actions</span>

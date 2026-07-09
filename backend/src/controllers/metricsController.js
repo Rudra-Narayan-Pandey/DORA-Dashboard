@@ -24,17 +24,10 @@ const metricsController = {
     }
   },
 
-  /**
-   * Retrieves weekly or monthly trends.
-   * 
-   * @param {import('express').Request} req 
-   * @param {import('express').Response} res 
-   * @param {import('express').NextFunction} next 
-   */
   getTrends: async (req, res, next) => {
     try {
       const { period } = req.params;
-      const data = await metricsService.getTrends(req, period);
+      const data = await metricsService.getTrends(req, period, req.query);
       
       res.status(200).json({
         success: true,

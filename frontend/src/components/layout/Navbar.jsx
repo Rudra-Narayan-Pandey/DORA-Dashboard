@@ -63,14 +63,48 @@ export const Navbar = ({ profile, initials = 'AZ', role = 'Server-side PAT' }) =
           {title}
         </h2>
         <nav className="hidden md:flex gap-6">
-          {links.map((lnk, idx) => (
-            <span 
-              key={idx} 
-              className="font-label-mono text-label-mono text-on-surface-variant hover:text-primary-fixed transition-colors cursor-pointer"
-            >
-              {lnk}
-            </span>
-          ))}
+          {links.map((lnk, idx) => {
+            const handleLinkClick = (name) => {
+              const idMap = {
+                // Dashboard
+                'Overview': 'dashboard-overview',
+                'Metrics': 'dashboard-metrics',
+                // Deployments
+                'Runs': 'deployments-ledger',
+                'Pipelines': 'deployments-chart',
+                // Analytics
+                'Trend': 'analytics-trend',
+                'Stages': 'analytics-stages',
+                // Incidents
+                'Incidents': 'incidents-chart',
+                'Bugs': 'incidents-ledger',
+                // Reports
+                'Scorecard': 'reports-scorecard',
+                'Actions': 'reports-recommendations',
+                // Settings
+                'Connection': 'settings-connection',
+                'Thresholds': 'settings-thresholds'
+              };
+              const target = idMap[name];
+              if (target) {
+                const element = document.getElementById(target);
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }
+            };
+
+            return (
+              <button 
+                key={idx} 
+                type="button"
+                onClick={() => handleLinkClick(lnk)}
+                className="font-label-mono text-label-mono text-on-surface-variant hover:text-primary-fixed transition-colors cursor-pointer focus:outline-none"
+              >
+                {lnk}
+              </button>
+            );
+          })}
         </nav>
       </div>
 

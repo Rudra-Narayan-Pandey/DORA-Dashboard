@@ -10,14 +10,15 @@ const deploymentController = {
    */
   getDeployments: async (req, res, next) => {
     try {
-      const { page, limit, environment, pipeline, status, search } = req.query;
+      const { page, limit, environment, pipeline, status, search, dateRange } = req.query;
       const data = await deploymentService.getDeployments(req, {
         page,
         limit,
         environment,
         pipeline,
         status,
-        search
+        search,
+        dateRange
       });
       
       res.status(200).json({

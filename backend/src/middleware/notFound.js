@@ -1,7 +1,7 @@
 /**
  * Middleware to catch all unmatched route requests and return a clean 404 error envelope.
  */
-const notFound = (req, res, next) => {
+const notFound = (req, res, _next) => {
   res.status(404).json({
     success: false,
     message: `Resource not found: ${req.method} ${req.originalUrl}`,

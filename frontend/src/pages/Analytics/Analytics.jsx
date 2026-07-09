@@ -36,34 +36,41 @@ export const Analytics = () => {
     }
   };
 
-  // Convert decimal hours float (e.g. 1.5) into Xh Ym
+  // Convert decimal hours float (e.g. 1.5) into Xh Ym, or seconds if sub-minute
   const formatLeadTime = (hoursStr) => {
     const hours = parseFloat(hoursStr);
     if (isNaN(hours)) return hoursStr || '0h 00m';
     if (hours === 0) return '0m';
+    
+    const totalSeconds = Math.round(hours * 3600);
+    if (totalSeconds < 60) return `${totalSeconds}s`;
+    
     const h = Math.floor(hours);
     const m = Math.round((hours - h) * 60);
     return h > 0 ? `${h}h ${m.toString().padStart(2, '0')}m` : `${m}m`;
   };
 
   // Get dynamic efficiency from lead time rating
-  const getEfficiency = (rating) => {
+  const getEfficiency = (rating, value) => {
+    if (!value || parseFloat(value) === 0) return 0;
     if (rating === 'Elite') return 95;
     if (rating === 'High') return 88;
     if (rating === 'Medium') return 72;
     return 48;
   };
 
-  const efficiency = metrics ? getEfficiency(metrics.leadTime?.rating || 'Low') : 0;
-  const stabilityScore = metrics ? (100 - parseFloat(metrics.changeFailureRate?.value || 0)).toFixed(0) : 0;
+  const hasDeployments = metrics?.totalSuccessfulDeployments > 0;
+  const efficiency = metrics ? getEfficiency(metrics.leadTime?.rating || 'Low', metrics.leadTime?.value) : 0;
+  const cfrNum = metrics ? parseFloat(metrics.changeFailureRate?.value || 0) : 0;
+  const stabilityScore = hasDeployments ? (100 - cfrNum).toFixed(0) : '--';
   const dfVal = metrics?.deploymentFrequency?.value || 0;
 
   // Dynamic durations based on fractions of total cycle time
-  const totalMins = metrics ? parseFloat(metrics.leadTime.value) * 60 : 82;
-  const devDuration = totalMins > 0 ? `${Math.round(totalMins * 0.5)}m` : '0m';
-  const buildDuration = totalMins > 0 ? `${Math.round(totalMins * 0.1)}m` : '0m';
-  const testDuration = totalMins > 0 ? `${Math.round(totalMins * 0.3)}m` : '0m';
-  const deployDuration = totalMins > 0 ? `${Math.round(totalMins * 0.1)}m` : '0m';
+  const totalMins = metrics ? parseFloat(metrics.leadTime.value) * 60 : 0;
+  const devDuration = totalMins > 0 ? `${Math.round(totalMins * 0.5)}m` : '--';
+  const buildDuration = totalMins > 0 ? `${Math.round(totalMins * 0.1)}m` : '--';
+  const testDuration = totalMins > 0 ? `${Math.round(totalMins * 0.3)}m` : '--';
+  const deployDuration = totalMins > 0 ? `${Math.round(totalMins * 0.1)}m` : '--';
 
   const chartData = trends || [];
 
@@ -75,7 +82,7 @@ export const Analytics = () => {
   return (
     <PageContainer>
       {/* Hero Section: Lead Time Velocity */}
-      <section className="mb-gutter reveal-up" style={{ animationDelay: '0.1s' }}>
+      <section id="analytics-trend" className="mb-gutter reveal-up" style={{ animationDelay: '0.1s' }}>
         <GlassCard className="rounded-xl overflow-hidden relative p-glass-padding">
           <div className="flex justify-between items-start mb-6 z-10 relative">
             <div>
@@ -139,11 +146,18 @@ export const Analytics = () => {
             <span className="text-[10px] font-label-mono text-primary-fixed-dim uppercase tracking-tighter">Stability Score: {stabilityScore}%</span>
           </div>
           <div className="font-label-mono text-xs text-on-surface-variant mb-1 uppercase tracking-widest font-semibold">Median Lead Time</div>
-          <div className="font-data-metric text-display-lg text-primary-fixed glow-text-cyan">{formatLeadTime(metrics?.leadTime?.value || 0)}</div>
-          <div className="mt-4 text-xs text-on-surface-variant flex items-center gap-1">
-            <span className="material-symbols-outlined text-green-400 text-sm">trending_down</span>
-            <span className="text-green-400 font-bold">-{metrics?.leadTime?.trend || 0}%</span> vs last week
-          </div>
+          <div className="font-data-metric text-display-lg text-primary-fixed glow-text-cyan">{hasDeployments ? formatLeadTime(metrics?.leadTime?.value || 0) : '--'}</div>
+          {hasDeployments ? (
+            <div className="mt-4 text-xs text-on-surface-variant flex items-center gap-1">
+              <span className={`material-symbols-outlined text-sm ${metrics?.leadTime?.trendDirection === 'down' ? 'text-green-400' : 'text-error'}`}>{metrics?.leadTime?.trendDirection === 'down' ? 'trending_down' : 'trending_up'}</span>
+              <span className={`font-bold ${metrics?.leadTime?.trendDirection === 'down' ? 'text-green-400' : 'text-error'}`}>{Math.abs(metrics?.leadTime?.trend || 0)}%</span> vs previous window
+            </div>
+          ) : (
+            <div className="mt-4 text-xs text-on-surface-variant flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm text-on-surface-variant/60">trending_flat</span>
+              NO DATA TO COMPARE
+            </div>
+          )}
         </GlassCard>
 
         {/* Process Efficiency */}
@@ -153,9 +167,9 @@ export const Analytics = () => {
             <span className="text-[10px] font-label-mono text-secondary uppercase tracking-tighter">Cluster Health</span>
           </div>
           <div className="font-label-mono text-xs text-on-surface-variant mb-1 uppercase tracking-widest font-semibold">Process Efficiency</div>
-          <div className="font-data-metric text-display-lg text-secondary">{efficiency}%</div>
+          <div className="font-data-metric text-display-lg text-secondary">{hasDeployments ? `${efficiency}%` : '--'}</div>
           <div className="mt-4 w-full bg-white/5 h-1 rounded-full overflow-hidden">
-            <div className="bg-secondary h-full shadow-[0_0_10px_rgba(192,193,255,0.5)]" style={{ width: `${efficiency}%` }}></div>
+            <div className="bg-secondary h-full shadow-[0_0_10px_rgba(192,193,255,0.5)]" style={{ width: `${hasDeployments ? efficiency : 0}%` }}></div>
           </div>
         </GlassCard>
 
@@ -163,19 +177,19 @@ export const Analytics = () => {
         <GlassCard delay="0.4s" className="rounded-xl p-glass-padding">
           <div className="flex justify-between items-start mb-4">
             <span className="material-symbols-outlined text-primary-fixed-dim">rocket_launch</span>
-            <span className="text-[10px] font-label-mono text-primary-fixed-dim uppercase tracking-tighter">{metrics?.deploymentFrequency?.rating || '--'} Performer</span>
+            <span className="text-[10px] font-label-mono text-primary-fixed-dim uppercase tracking-tighter">{hasDeployments ? `${metrics?.deploymentFrequency?.rating || '--'} Performer` : 'UNRATED'}</span>
           </div>
           <div className="font-label-mono text-xs text-on-surface-variant mb-1 uppercase tracking-widest font-semibold">Deployment Velocity</div>
           <div className="font-data-metric text-display-lg text-on-surface">{dfVal}<span className="text-2xl text-on-surface-variant">/day</span></div>
           <div className="mt-4 text-xs text-on-surface-variant flex items-center gap-1 font-mono">
             <span className="material-symbols-outlined text-primary-fixed-dim text-sm">auto_graph</span>
-            Scaling according to schedule
+            {hasDeployments ? `${metrics?.deploymentFrequency?.rating} tier performance` : 'No successful deploys in window'}
           </div>
         </GlassCard>
       </section>
 
       {/* Pipeline Stage Breakdown Table */}
-      <section className="glass-panel rounded-xl overflow-hidden reveal-up" style={{ animationDelay: '0.5s' }}>
+      <section id="analytics-stages" className="glass-panel rounded-xl overflow-hidden reveal-up" style={{ animationDelay: '0.5s' }}>
         <div className="px-glass-padding py-6 border-b border-white/10 flex justify-between items-center">
           <h3 className="font-headline-lg text-headline-lg text-on-surface">Pipeline Stage Breakdown</h3>
           <button
@@ -232,8 +246,8 @@ export const Analytics = () => {
               ].map((stage) => {
                 const stageData = metrics?.stages?.[stage.key] || {
                   duration: stage.key === 'development' ? devDuration : stage.key === 'build' ? buildDuration : stage.key === 'test' ? testDuration : deployDuration,
-                  status: stage.key === 'development' ? 'STABLE' : stage.key === 'build' ? 'OPTIMIZED' : stage.key === 'test' ? 'HEAVY LOAD' : 'READY',
-                  healthIndex: stage.key === 'development' ? 3 : stage.key === 'build' ? 4 : stage.key === 'test' ? 1 : 2
+                  status: totalMins > 0 ? 'ACTIVE' : 'NO DATA',
+                  healthIndex: totalMins > 0 ? 2 : 0
                 };
 
                 const isStable = ['STABLE', 'OPTIMIZED', 'READY'].includes(stageData.status);

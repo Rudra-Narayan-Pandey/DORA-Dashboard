@@ -27,8 +27,8 @@ export const DashboardProvider = ({ children }) => {
       setMetrics(metricsRes);
 
       // Fetch trends (weekly/monthly based on dateRange selection)
-      const period = filters.dateRange === '30d' || filters.dateRange === '90d' || filters.dateRange === 'all' ? 'monthly' : 'weekly';
-      const trendsRes = await getTrends(period);
+      const period = filters.dateRange === 'all' ? 'monthly' : 'weekly';
+      const trendsRes = await getTrends(period, filters);
       setTrends(trendsRes);
 
       // Fetch first page of deployments & incidents

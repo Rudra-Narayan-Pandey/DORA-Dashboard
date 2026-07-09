@@ -16,6 +16,7 @@ import { DashboardContext } from '../../context/DashboardContext';
 import dayjs from 'dayjs';
 import { formatDisplayName } from '../../utils/displayNames';
 import EmptyState from '../../components/feedback/EmptyState';
+import { showSuccessToast, showErrorToast } from '../../components/feedback/ToastMessage';
 
 export const Incidents = () => {
   const {
@@ -26,11 +27,48 @@ export const Incidents = () => {
     page,
     setPage,
     refetch,
+    createIncident,
     resolveIncident
   } = useIncidents(1, 5);
 
   const { metrics, trends } = useContext(DashboardContext);
   const [activeChart, setActiveChart] = useState('mttr'); // mttr, rate
+
+  // Report Modal states
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [severity, setSeverity] = useState('critical');
+  const [environment, setEnvironment] = useState('Production');
+  const [pipeline, setPipeline] = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleReportSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      showErrorToast('Title is required to log an anomaly.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createIncident({
+        title: title.trim(),
+        severity,
+        environment,
+        pipeline: pipeline.trim() || 'Core-Service',
+        description: description.trim()
+      });
+      setIsReportModalOpen(false);
+      setTitle('');
+      setPipeline('');
+      setDescription('');
+      showSuccessToast('Incident successfully created on Azure Boards.');
+    } catch {
+      showErrorToast('Failed to create incident.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading && page === 1) {
     return (
@@ -73,13 +111,15 @@ export const Incidents = () => {
       }))
     : [];
 
-  const stabilityScore = metrics ? (100 - parseFloat(metrics.changeFailureRate.value || 0)).toFixed(0) : 0;
-  const mttrVal = metrics ? metrics.meanTimeToRestore.value : '0';
+  const cfrNum = metrics ? parseFloat(metrics.changeFailureRate?.value || 0) : 0;
+  const hasDeployments = metrics?.totalDeployments > 0;
+  const stabilityScore = hasDeployments ? (100 - cfrNum).toFixed(0) : '--';
+  const mttrVal = metrics ? metrics.meanTimeToRestore?.value || 0 : 0;
 
   return (
     <PageContainer>
       {/* Chart Section */}
-      <section className="mb-gutter reveal-up" style={{ animationDelay: '0.1s' }}>
+      <section id="incidents-chart" className="mb-gutter reveal-up" style={{ animationDelay: '0.1s' }}>
         <GlassCard className="rounded-xl overflow-hidden relative p-glass-padding">
           <div className="flex justify-between items-start mb-6 z-10 relative">
             <div>
@@ -143,7 +183,7 @@ export const Incidents = () => {
           <div className="font-data-metric text-display-lg text-error">
             {incidents.filter(i => i.status !== 'resolved').length}
           </div>
-          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono font-bold uppercase">{metrics?.changeFailureRate.rating === 'Elite' ? 'STABLE - WITHIN THRESHOLD' : 'DEVIATION DETECTED'}</p>
+          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono font-bold uppercase">{incidents.filter(i => i.status !== 'resolved').length === 0 ? 'ALL SYSTEMS NOMINAL' : 'ACTIVE ALERTS DETECTED'}</p>
         </GlassCard>
 
         <GlassCard delay="0.3s" className="rounded-xl p-glass-padding">
@@ -152,8 +192,8 @@ export const Incidents = () => {
             <span className="text-[10px] font-label-mono text-secondary uppercase tracking-tighter">GRID HEALTH</span>
           </div>
           <div className="font-label-mono text-xs text-on-surface-variant mb-1 uppercase tracking-widest font-semibold">Stability Score</div>
-          <div className="font-data-metric text-display-lg text-secondary">{stabilityScore}%</div>
-          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono font-bold uppercase">{metrics?.changeFailureRate.rating} RATING SECURED</p>
+          <div className="font-data-metric text-display-lg text-secondary">{hasDeployments ? `${stabilityScore}%` : '--'}</div>
+          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono font-bold uppercase">{hasDeployments ? `${metrics?.changeFailureRate?.rating || 'Low'} RATING SECURED` : 'NO DEPLOYMENTS TO EVALUATE'}</p>
         </GlassCard>
 
         <GlassCard delay="0.4s" className="rounded-xl p-glass-padding">
@@ -162,15 +202,23 @@ export const Incidents = () => {
             <span className="text-[10px] font-label-mono text-primary-fixed-dim uppercase tracking-tighter">Avg Restore Rate</span>
           </div>
           <div className="font-label-mono text-xs text-on-surface-variant mb-1 uppercase tracking-widest font-semibold">Median MTTR</div>
-          <div className="font-data-metric text-display-lg text-primary-fixed glow-text-cyan">{mttrVal}m</div>
-          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono font-bold uppercase">{metrics?.meanTimeToRestore.rating}-PERFORMING STATUS</p>
+          <div className="font-data-metric text-display-lg text-primary-fixed glow-text-cyan">{metrics?.totalIncidents === 0 ? '--' : `${mttrVal}m`}</div>
+          <p className="text-xs text-on-surface-variant/60 mt-3 font-label-mono font-bold uppercase">{metrics?.totalIncidents === 0 ? 'NO INCIDENTS REPORTED' : `${metrics?.meanTimeToRestore?.rating || 'Low'}-PERFORMING STATUS`}</p>
         </GlassCard>
       </section>
 
       {/* Incidents Ledger Table */}
-      <section className="glass-panel rounded-xl overflow-hidden reveal-up" style={{ animationDelay: '0.5s' }}>
+      <section id="incidents-ledger" className="glass-panel rounded-xl overflow-hidden reveal-up" style={{ animationDelay: '0.5s' }}>
         <div className="px-glass-padding py-6 border-b border-white/10 flex justify-between items-center">
           <h3 className="font-headline-lg text-headline-lg text-on-surface">Recent Outages & Degradations</h3>
+          
+          <button
+            onClick={() => setIsReportModalOpen(true)}
+            className="px-4 py-1.5 bg-error text-on-primary font-bold rounded-lg text-xs font-mono uppercase tracking-wider hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(255,84,84,0.2)]"
+          >
+            <span className="material-symbols-outlined text-sm">report</span>
+            Report Anomaly
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -193,14 +241,14 @@ export const Incidents = () => {
                     <EmptyState
                       title="No Azure Boards incidents found"
                       message="The selected Azure DevOps window currently has no incident or bug work items matching the configured filters."
-                      actionLabel="Refresh Data"
-                      onAction={refetch}
+                      actionLabel="Report New Incident"
+                      onAction={() => setIsReportModalOpen(true)}
                     />
                   </td>
                 </tr>
               ) : incidents.map((i, idx) => (
                 <tr key={i.id || idx} className="scanline-row transition-colors hover:text-primary-fixed">
-                  <td className="px-glass-padding py-5 font-bold text-error">{i.id || '--'}</td>
+                  <td className="px-glass-padding py-5 font-bold text-error">{i.id || `--`}</td>
                   <td className="px-glass-padding py-5">
                     <div className="flex flex-col gap-0.5">
                       <span className="font-medium text-on-surface">{i.title}</span>
@@ -264,6 +312,104 @@ export const Incidents = () => {
           </div>
         </div>
       </section>
+
+      {/* Report Incident Modal */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-gutter backdrop-blur-3xl overflow-hidden">
+          <div className="relative w-full max-w-xl glass-panel rounded-2xl p-6 border border-white/15 shadow-2xl z-10 font-mono text-on-surface text-xs">
+            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+              <div>
+                <h3 className="font-display-lg text-xl text-error tracking-tight">Report Service Anomaly</h3>
+                <p className="text-[10px] text-on-surface-variant/60 uppercase mt-1">Log a new bug / incident work item in Azure Boards</p>
+              </div>
+              <button onClick={() => setIsReportModalOpen(false)} className="p-2 rounded-full hover:bg-white/10 text-on-surface-variant">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleReportSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] text-on-surface-variant uppercase tracking-widest px-1">Anomaly Title</label>
+                <input 
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Critical failure in core billing database connection"
+                  className="w-full glass-input rounded-xl px-4 py-3 text-on-surface"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-on-surface-variant uppercase tracking-widest px-1">Severity</label>
+                  <select 
+                    value={severity} 
+                    onChange={(e) => setSeverity(e.target.value)}
+                    className="w-full glass-input rounded-xl px-4 py-3 bg-surface-container-high/90 appearance-none cursor-pointer"
+                  >
+                    <option value="critical" className="bg-surface">CRITICAL (Priority 1)</option>
+                    <option value="major" className="bg-surface">MAJOR (Priority 2)</option>
+                    <option value="minor" className="bg-surface">MINOR (Priority 3)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-on-surface-variant uppercase tracking-widest px-1">Target Environment</label>
+                  <select 
+                    value={environment} 
+                    onChange={(e) => setEnvironment(e.target.value)}
+                    className="w-full glass-input rounded-xl px-4 py-3 bg-surface-container-high/90 appearance-none cursor-pointer"
+                  >
+                    <option value="Production" className="bg-surface">PRODUCTION</option>
+                    <option value="Canary" className="bg-surface">CANARY</option>
+                    <option value="Staging" className="bg-surface">STAGING</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-on-surface-variant uppercase tracking-widest px-1">Affected Pipeline / Service</label>
+                <input 
+                  type="text"
+                  value={pipeline}
+                  onChange={(e) => setPipeline(e.target.value)}
+                  placeholder="e.g. Rudra-Narayan-Pandey.DORA-Dashboard"
+                  className="w-full glass-input rounded-xl px-4 py-3 text-on-surface"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-on-surface-variant uppercase tracking-widest px-1">Detailed Description</label>
+                <textarea 
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Steps to reproduce, error stack, impact analysis..."
+                  rows={4}
+                  className="w-full glass-input rounded-xl px-4 py-3 text-on-surface bg-transparent resize-none focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => setIsReportModalOpen(false)}
+                  className="flex-1 py-3 border border-white/10 rounded-xl hover:bg-white/5 text-on-surface"
+                >
+                  CANCEL
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={submitting}
+                  className="flex-1 py-3 bg-error text-on-primary font-bold rounded-xl shadow-[0_0_20px_rgba(255,84,84,0.3)] hover:brightness-110 active:scale-95 transition-all"
+                >
+                  {submitting ? 'LOGGING BUG...' : 'REPORT OUTAGE'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </PageContainer>
   );
 };

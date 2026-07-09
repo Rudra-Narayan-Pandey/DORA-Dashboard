@@ -10,7 +10,7 @@ const redactSensitiveData = (data) => {
   if (typeof data === 'string') {
     return data
       .replace(/(Basic\s+)[A-Za-z0-9+/=]+/gi, '$1[REDACTED]')
-      .replace(/(Bearer\s+)[A-Za-z0-9\-\._~\+\/]+=*/gi, '$1[REDACTED]');
+      .replace(/(Bearer\s+)[A-Za-z0-9\-._~+/]+=*/gi, '$1[REDACTED]');
   }
 
   if (Array.isArray(data)) {

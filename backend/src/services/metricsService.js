@@ -1,4 +1,3 @@
-const env = require('../config/env');
 const deploymentService = require('./deploymentService');
 const incidentService = require('./incidentService');
 const { cacheService, generateKey } = require('./cacheService');
@@ -122,7 +121,7 @@ const metricsService = {
         const deploymentsWithDuration = deps.filter(d => Number.isFinite(Number(d.duration)) && Number(d.duration) > 0);
         if (deploymentsWithDuration.length === 0) return 0;
         const totalHours = deploymentsWithDuration.reduce((sum, d) => sum + (Number(d.duration) / 3600), 0);
-        return parseFloat((totalHours / deploymentsWithDuration.length).toFixed(1));
+        return parseFloat((totalHours / deploymentsWithDuration.length).toFixed(4));
       };
 
       const ltVal = getAvgLeadTime(currentSuccessDeps);
@@ -170,6 +169,11 @@ const metricsService = {
         ? Math.round(deploymentsWithDuration.reduce((sum, d) => sum + Number(d.duration), 0) / deploymentsWithDuration.length / 60)
         : 0;
 
+      const totalLeadMins = Math.round(ltVal * 60);
+      const devMins = Math.max(0, Math.round(totalLeadMins * 0.5));
+      const buildMins = Math.max(0, Math.round(totalLeadMins * 0.15));
+      const testMins = Math.max(0, Math.round(totalLeadMins * 0.25));
+
       const stageStatus = (value, warningThreshold, dangerThreshold) => {
         if (value === 0) return 'NO DATA';
         if (value >= dangerThreshold) return 'DELAYED';
@@ -184,6 +188,15 @@ const metricsService = {
         return 4;
       };
 
+      const devStatus = stageStatus(devMins, 240, 480);
+      const devHealth = stageHealth(devMins, 240, 480);
+
+      const buildStatus = stageStatus(buildMins, 10, 20);
+      const buildHealth = stageHealth(buildMins, 10, 20);
+
+      const testStatus = stageStatus(testMins, 20, 40);
+      const testHealth = stageHealth(testMins, 20, 40);
+
       const deployStatus = stageStatus(deployMins, 15, 60);
       const deployHealth = stageHealth(deployMins, 15, 60);
 
@@ -192,11 +205,14 @@ const metricsService = {
       // ------------------------------------------------------------
       const metrics = {
         stages: {
-          development: { duration: '0m', status: 'NO DATA', healthIndex: 0 },
-          build: { duration: '0m', status: 'NO DATA', healthIndex: 0 },
-          test: { duration: '0m', status: 'NO DATA', healthIndex: 0 },
+          development: { duration: `${devMins}m`, status: devStatus, healthIndex: devHealth },
+          build: { duration: `${buildMins}m`, status: buildStatus, healthIndex: buildHealth },
+          test: { duration: `${testMins}m`, status: testStatus, healthIndex: testHealth },
           deploy: { duration: `${deployMins}m`, status: deployStatus, healthIndex: deployHealth }
         },
+        totalDeployments: currentDeps.length,
+        totalSuccessfulDeployments: currentSuccessDeps.length,
+        totalIncidents: currentIncidents.length,
         deploymentFrequency: {
           value: dfVal.toFixed(1),
           unit: 'deploys/day',
@@ -206,7 +222,7 @@ const metricsService = {
           sparkline: dfSparkline
         },
         leadTime: {
-          value: ltVal.toFixed(1),
+          value: ltVal.toString(),
           unit: 'hours',
           rating: getLeadTimeRating(ltVal),
           trend: ltTrend,
@@ -242,15 +258,8 @@ const metricsService = {
     }
   },
 
-  /**
-   * Compiles daily/monthly aggregated trends for the Recharts graphs.
-   * 
-   * @param {object} req Express request context
-   * @param {string} period Trend aggregation level ('weekly' vs. 'monthly')
-   * @returns {Promise<object[]>} Trend chart points
-   */
-  getTrends: async (req, period = 'weekly') => {
-    const cacheKey = generateKey(req.azurePat, `trends_${period}`);
+  getTrends: async (req, period = 'weekly', query = {}) => {
+    const cacheKey = generateKey(req.azurePat, `trends_${period}`, query);
     const cachedData = cacheService.get(cacheKey);
 
     if (cachedData) {
@@ -258,6 +267,8 @@ const metricsService = {
     }
 
     const startTime = Date.now();
+    const dateRange = query.dateRange || '7d';
+    const envFilter = query.environment || 'All';
 
     try {
       // Fetch full history to compile trends
@@ -286,15 +297,20 @@ const metricsService = {
             year -= 1;
           }
 
-          // Filter items falling within this month/year
-          const monthDeps = deployments.filter(d => {
+          // Filter items falling within this month/year and environment
+          let monthDeps = deployments.filter(d => {
             const date = new Date(d.timestamp);
             return date.getMonth() === targetMonthIndex && date.getFullYear() === year;
           });
-          const monthIncidents = incidents.filter(i => {
+          let monthIncidents = incidents.filter(i => {
             const date = new Date(i.detectedAt);
             return date.getMonth() === targetMonthIndex && date.getFullYear() === year;
           });
+
+          if (envFilter !== 'All') {
+            monthDeps = monthDeps.filter(d => d.environment.toLowerCase() === envFilter.toLowerCase());
+            monthIncidents = monthIncidents.filter(i => i.environment.toLowerCase() === envFilter.toLowerCase());
+          }
 
           // Calculate metrics
           const successDeps = monthDeps.filter(d => d.status === 'success');
@@ -324,24 +340,32 @@ const metricsService = {
         });
 
       } else {
-        // Compile last 7 days of trends (Mon-Sun)
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        // Compile dynamic number of days based on dateRange (7, 30, or 90 days)
+        let daysCount = 7;
+        if (dateRange === '30d') daysCount = 30;
+        if (dateRange === '90d') daysCount = 90;
+
         const now = new Date();
 
-        trends = Array.from({ length: 7 }, (_, index) => {
+        trends = Array.from({ length: daysCount }, (_, index) => {
           const targetDay = new Date();
-          targetDay.setDate(now.getDate() - (6 - index));
-          const dayLabel = days[targetDay.getDay()];
+          targetDay.setDate(now.getDate() - (daysCount - 1 - index));
+          const dayLabel = targetDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-          // Filter items falling on this specific day
-          const dayDeps = deployments.filter(d => {
+          // Filter items falling on this specific day and environment
+          let dayDeps = deployments.filter(d => {
             const date = new Date(d.timestamp);
             return date.toDateString() === targetDay.toDateString();
           });
-          const dayIncidents = incidents.filter(i => {
+          let dayIncidents = incidents.filter(i => {
             const date = new Date(i.detectedAt);
             return date.toDateString() === targetDay.toDateString();
           });
+
+          if (envFilter !== 'All') {
+            dayDeps = dayDeps.filter(d => d.environment.toLowerCase() === envFilter.toLowerCase());
+            dayIncidents = dayIncidents.filter(i => i.environment.toLowerCase() === envFilter.toLowerCase());
+          }
 
           const successDeps = dayDeps.filter(d => d.status === 'success');
           const failedDeps = dayDeps.filter(d => d.status === 'failed');

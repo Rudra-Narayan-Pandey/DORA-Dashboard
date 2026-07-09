@@ -276,7 +276,7 @@ export const Settings = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* Connection Status Card */}
-          <div className="glass-panel p-glass-padding rounded-xl flex flex-col gap-4 border-white/10">
+          <div id="settings-connection" className="glass-panel p-glass-padding rounded-xl flex flex-col gap-4 border-white/10">
             <h3 className="text-sm font-bold uppercase tracking-widest text-primary-fixed-dim border-b border-white/10 pb-3 flex items-center gap-2">
               <span className="material-symbols-outlined text-sm">wifi_tethering</span>
               <span>Connection Status</span>
@@ -414,7 +414,7 @@ export const Settings = () => {
         </div>
 
         {/* ── Row 2: DORA Thresholds ── */}
-        <div className="glass-panel p-glass-padding rounded-xl flex flex-col gap-4 border-white/10">
+        <div id="settings-thresholds" className="glass-panel p-glass-padding rounded-xl flex flex-col gap-4 border-white/10">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <h3 className="text-sm font-bold uppercase tracking-widest text-secondary flex items-center gap-2">
               <span className="material-symbols-outlined text-sm">speed</span>

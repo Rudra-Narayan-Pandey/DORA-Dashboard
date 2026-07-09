@@ -112,7 +112,6 @@ export const Dashboard = () => {
 
   const chartData = trends || [];
   const chartLabelKey = chartData[0]?.month ? 'month' : 'day';
-  const chartLabels = chartData.map((point) => point[chartLabelKey]).filter(Boolean);
 
   const buildSparklinePath = (values = []) => {
     const numericValues = values.map(Number).filter((value) => Number.isFinite(value));
@@ -133,6 +132,17 @@ export const Dashboard = () => {
   };
 
   const buildSparklineFill = (path) => (path ? `${path} V30 H0 Z` : '');
+
+  const formatLeadTimeInsight = (val) => {
+    const h = parseFloat(val);
+    if (isNaN(h) || h === 0) return '0';
+    if (h < 1) {
+      const secs = Math.round(h * 3600);
+      return secs < 60 ? `${secs} seconds` : `${Math.round(h * 60)} minutes`;
+    }
+    return `${h.toFixed(1)} hours`;
+  };
+
   const dfSparkline = buildSparklinePath(metrics?.deploymentFrequency?.sparkline);
   const ltSparkline = buildSparklinePath(metrics?.leadTime?.sparkline);
   const cfrSparkline = buildSparklinePath(metrics?.changeFailureRate?.sparkline);
@@ -141,18 +151,30 @@ export const Dashboard = () => {
   const insightCards = [
     {
       tone: 'primary',
-      title: metrics?.leadTime?.trendDirection === 'down' ? 'Lead Time Improving' : 'Lead Time Watch',
-      copy: `${metrics?.leadTime?.rating || 'Unrated'} lead time at ${metrics?.leadTime?.value || 0} ${metrics?.leadTime?.unit || 'hours'} with ${Math.abs(metrics?.leadTime?.trend || 0)} change versus the previous window.`
+      title: parseFloat(metrics?.leadTime?.value || 0) > 0 
+        ? (metrics?.leadTime?.trendDirection === 'down' ? 'Lead Time Improving' : 'Lead Time Watch')
+        : 'Lead Time — No Data',
+      copy: parseFloat(metrics?.leadTime?.value || 0) > 0
+        ? `${metrics?.leadTime?.rating} lead time at ${formatLeadTimeInsight(metrics?.leadTime?.value)} with ${Math.abs(metrics?.leadTime?.trend || 0)}% change versus the previous window.`
+        : 'No successful deployments in this window. Lead time metrics require at least one completed pipeline run.'
     },
     {
       tone: 'error',
-      title: metrics?.changeFailureRate?.trendDirection === 'up' ? 'Failure Rate Rising' : 'Failure Rate Controlled',
-      copy: `${metrics?.changeFailureRate?.rating || 'Unrated'} change failure rate at ${metrics?.changeFailureRate?.value || 0}${metrics?.changeFailureRate?.unit || '%'} across the selected telemetry window.`
+      title: parseFloat(metrics?.changeFailureRate?.value || 0) > 0
+        ? (metrics?.changeFailureRate?.trendDirection === 'up' ? 'Failure Rate Rising' : 'Failure Rate Controlled')
+        : 'Change Failure Rate',
+      copy: parseFloat(metrics?.changeFailureRate?.value || 0) > 0
+        ? `${metrics?.changeFailureRate?.rating} change failure rate at ${metrics?.changeFailureRate?.value}% across the selected telemetry window.`
+        : 'No failures detected in this window, or no deployments exist to evaluate.'
     },
     {
       tone: 'secondary',
-      title: metrics?.deploymentFrequency?.trendDirection === 'up' ? 'Deployment Cadence Up' : 'Deployment Cadence Steady',
-      copy: `${metrics?.deploymentFrequency?.rating || 'Unrated'} deployment frequency at ${metrics?.deploymentFrequency?.value || 0} ${metrics?.deploymentFrequency?.unit || 'deploys/day'}.`
+      title: parseFloat(metrics?.deploymentFrequency?.value || 0) > 0
+        ? (metrics?.deploymentFrequency?.trendDirection === 'up' ? 'Deployment Cadence Up' : 'Deployment Cadence Steady')
+        : 'Deployment Cadence — Inactive',
+      copy: parseFloat(metrics?.deploymentFrequency?.value || 0) > 0
+        ? `${metrics?.deploymentFrequency?.rating} deployment frequency at ${metrics?.deploymentFrequency?.value} ${metrics?.deploymentFrequency?.unit || 'deploys/day'}.`
+        : 'No successful deployments in this window. Trigger a pipeline run to begin tracking deployment cadence.'
     }
   ];
 
@@ -192,7 +214,7 @@ export const Dashboard = () => {
       </header>
 
       {/* Top Row: DORA Metrics */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-panel-gap mb-panel-gap">
+      <section id="dashboard-metrics" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-panel-gap mb-panel-gap">
         {/* Deployment Frequency */}
         <GlassCard glow delay="0.2s" className="p-glass-padding rounded-xl">
           <div className="flex justify-between items-start mb-4">
@@ -214,9 +236,15 @@ export const Dashboard = () => {
               <path className="fill-primary-container/10 stroke-none" d={buildSparklineFill(dfSparkline)}></path>
             </svg>
           </div>
-          <p className={`text-xs mt-3 font-label-mono ${gradeDeploymentFrequency(metrics?.deploymentFrequency?.value || 0).isGood ? 'text-primary-fixed/60' : 'text-error/60'}`}>
-            {gradeDeploymentFrequency(metrics?.deploymentFrequency?.value || 0).label} · ↑ {metrics?.deploymentFrequency?.trend || 0}%
-          </p>
+          {metrics?.totalSuccessfulDeployments === 0 ? (
+            <p className="text-xs mt-3 font-label-mono text-on-surface-variant/60">
+              NO SUCCESSFUL DEPLOYMENTS DETECTED
+            </p>
+          ) : (
+            <p className={`text-xs mt-3 font-label-mono ${gradeDeploymentFrequency(metrics?.deploymentFrequency?.value || 0).isGood ? 'text-primary-fixed/60' : 'text-error/60'}`}>
+              {gradeDeploymentFrequency(metrics?.deploymentFrequency?.value || 0).label} · {metrics?.deploymentFrequency?.trendDirection === 'up' ? '↑' : '↓'} {metrics?.deploymentFrequency?.trend || 0}%
+            </p>
+          )}
         </GlassCard>
 
         {/* Lead Time */}
@@ -229,9 +257,9 @@ export const Dashboard = () => {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="font-data-metric text-[36px] text-secondary-fixed-dim">
-              <AnimatedCounter targetValue={metrics?.leadTime?.value || 0} decimals={1} />
+              {parseFloat(metrics?.leadTime?.value || 0) === 0 ? '--' : <AnimatedCounter targetValue={metrics?.leadTime?.value || 0} decimals={metrics?.leadTime?.value > 0 && metrics?.leadTime?.value < 0.1 ? 3 : 1} />}
             </span>
-            <span className="font-label-mono text-xs text-secondary-fixed">HOURS</span>
+            <span className="font-label-mono text-xs text-secondary-fixed">{parseFloat(metrics?.leadTime?.value || 0) === 0 ? '' : 'HOURS'}</span>
           </div>
           {/* SVG Sparkline */}
           <div className="h-12 mt-4">
@@ -240,9 +268,15 @@ export const Dashboard = () => {
               <path className="fill-secondary-container/10 stroke-none" d={buildSparklineFill(ltSparkline)}></path>
             </svg>
           </div>
-          <p className={`text-xs mt-3 font-label-mono ${gradeLeadTime(metrics?.leadTime?.value || 0).isGood ? 'text-secondary-fixed/60' : 'text-error/60'}`}>
-            {gradeLeadTime(metrics?.leadTime?.value || 0).label} · ↓ {Math.abs(metrics?.leadTime?.trend || 0)}h
-          </p>
+          {metrics?.totalSuccessfulDeployments === 0 ? (
+            <p className="text-xs mt-3 font-label-mono text-on-surface-variant/60">
+              NO DATA — 0 DEPLOYMENTS
+            </p>
+          ) : (
+            <p className={`text-xs mt-3 font-label-mono ${gradeLeadTime(metrics?.leadTime?.value || 0).isGood ? 'text-secondary-fixed/60' : 'text-error/60'}`}>
+              {gradeLeadTime(metrics?.leadTime?.value || 0).label} · {metrics?.leadTime?.trendDirection === 'up' ? '↑' : '↓'} {Math.abs(metrics?.leadTime?.trend || 0)}%
+            </p>
+          )}
         </GlassCard>
 
         {/* Change Failure Rate */}
@@ -255,9 +289,9 @@ export const Dashboard = () => {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="font-data-metric text-[36px] text-error">
-              <AnimatedCounter targetValue={metrics?.changeFailureRate?.value || 0} decimals={1} />
+              {metrics?.totalDeployments === 0 ? '--' : <AnimatedCounter targetValue={metrics?.changeFailureRate?.value || 0} decimals={1} />}
             </span>
-            <span className="font-label-mono text-xs text-error/60">%</span>
+            <span className="font-label-mono text-xs text-error/60">{metrics?.totalDeployments === 0 ? '' : '%'}</span>
           </div>
           {/* SVG Sparkline */}
           <div className="h-12 mt-4">
@@ -266,9 +300,15 @@ export const Dashboard = () => {
               <path className="fill-error-container/10 stroke-none" d={buildSparklineFill(cfrSparkline)}></path>
             </svg>
           </div>
-          <p className={`text-xs mt-3 font-label-mono ${gradeChangeFailureRate(metrics?.changeFailureRate?.value || 0).isGood ? 'text-on-surface-variant/60' : 'text-error/60'}`}>
-            {gradeChangeFailureRate(metrics?.changeFailureRate?.value || 0).label}
-          </p>
+          {metrics?.totalDeployments === 0 ? (
+            <p className="text-xs mt-3 font-label-mono text-on-surface-variant/60">
+              NO DEPLOYMENTS TO EVALUATE
+            </p>
+          ) : (
+            <p className={`text-xs mt-3 font-label-mono ${gradeChangeFailureRate(metrics?.changeFailureRate?.value || 0).isGood ? 'text-on-surface-variant/60' : 'text-error/60'}`}>
+              {gradeChangeFailureRate(metrics?.changeFailureRate?.value || 0).label}
+            </p>
+          )}
         </GlassCard>
 
         {/* Recovery Time */}
@@ -281,9 +321,9 @@ export const Dashboard = () => {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="font-data-metric text-[36px] text-tertiary-fixed-dim">
-              <AnimatedCounter targetValue={metrics?.meanTimeToRestore?.value || 0} decimals={0} />
+              {parseFloat(metrics?.meanTimeToRestore?.value || 0) === 0 ? '--' : <AnimatedCounter targetValue={metrics?.meanTimeToRestore?.value || 0} decimals={0} />}
             </span>
-            <span className="font-label-mono text-xs text-tertiary-fixed">MINS</span>
+            <span className="font-label-mono text-xs text-tertiary-fixed">{parseFloat(metrics?.meanTimeToRestore?.value || 0) === 0 ? '' : 'MINS'}</span>
           </div>
           {/* SVG Sparkline */}
           <div className="h-12 mt-4">
@@ -292,14 +332,20 @@ export const Dashboard = () => {
               <path className="fill-tertiary-container/10 stroke-none" d={buildSparklineFill(mttrSparkline)}></path>
             </svg>
           </div>
-          <p className={`text-xs mt-3 font-label-mono ${gradeMTTR(metrics?.meanTimeToRestore?.value || 0).isGood ? 'text-tertiary-fixed/60' : 'text-error/60'}`}>
-            {gradeMTTR(metrics?.meanTimeToRestore?.value || 0).label}
-          </p>
+          {metrics?.totalIncidents === 0 ? (
+            <p className="text-xs mt-3 font-label-mono text-on-surface-variant/60">
+              NO INCIDENTS DETECTED
+            </p>
+          ) : (
+            <p className={`text-xs mt-3 font-label-mono ${gradeMTTR(metrics?.meanTimeToRestore?.value || 0).isGood ? 'text-tertiary-fixed/60' : 'text-error/60'}`}>
+              {gradeMTTR(metrics?.meanTimeToRestore?.value || 0).label} · {metrics?.meanTimeToRestore?.trendDirection === 'up' ? '↑' : '↓'} {Math.abs(metrics?.meanTimeToRestore?.trend || 0)} mins
+            </p>
+          )}
         </GlassCard>
       </section>
 
       {/* Middle Row: Trend & Insights */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-panel-gap mb-panel-gap">
+      <section id="dashboard-overview" className="grid grid-cols-1 lg:grid-cols-3 gap-panel-gap mb-panel-gap">
         {/* Left: Deployment Velocity Trends */}
         <GlassCard delay="0.6s" className="lg:col-span-2 min-h-[400px] flex flex-col p-glass-padding rounded-2xl">
           <div className="flex justify-between items-center mb-8">
@@ -361,9 +407,6 @@ export const Dashboard = () => {
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
-          <div className="flex justify-between mt-4 font-label-mono text-[10px] text-on-surface-variant/40">
-            {chartLabels.length > 0 ? chartLabels.map((label) => <span key={label}>{label}</span>) : <span>No trend labels available</span>}
           </div>
         </GlassCard>
 

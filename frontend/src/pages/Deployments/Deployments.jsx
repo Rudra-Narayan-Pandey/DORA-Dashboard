@@ -75,7 +75,7 @@ export const Deployments = () => {
   return (
     <PageContainer>
       {/* Chart Section */}
-      <section className="mb-gutter reveal-up" style={{ animationDelay: '0.1s' }}>
+      <section id="deployments-chart" className="mb-gutter reveal-up" style={{ animationDelay: '0.1s' }}>
         <GlassCard className="rounded-xl overflow-hidden relative p-glass-padding">
           <div className="flex justify-between items-start mb-6 z-10 relative">
             <div>
@@ -137,7 +137,7 @@ export const Deployments = () => {
       </section>
 
       {/* Main Ledger Table */}
-      <section className="glass-panel rounded-xl overflow-hidden reveal-up" style={{ animationDelay: '0.2s' }}>
+      <section id="deployments-ledger" className="glass-panel rounded-xl overflow-hidden reveal-up" style={{ animationDelay: '0.2s' }}>
         <div className="px-glass-padding py-6 border-b border-white/10 flex justify-between items-center">
           <h3 className="font-headline-lg text-headline-lg text-on-surface">Recent Azure Pipeline Runs</h3>
           <div className="flex items-center gap-4">
@@ -163,9 +163,16 @@ export const Deployments = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs text-on-surface">
-              {deployments.map((dep, idx) => (
-                <tr key={dep.id || idx} className="scanline-row transition-colors hover:text-primary-fixed">
-                  <td className="px-glass-padding py-5 font-bold text-primary-fixed">{dep.id || `--`}</td>
+              {deployments.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-glass-padding py-12 text-center text-on-surface-variant/60 font-mono text-xs">
+                    No Azure pipeline runs found in this selected window.
+                  </td>
+                </tr>
+              ) : (
+                deployments.map((dep, idx) => (
+                  <tr key={dep.id || idx} className="scanline-row transition-colors hover:text-primary-fixed">
+                    <td className="px-glass-padding py-5 font-bold text-primary-fixed">{dep.id || `--`}</td>
                   <td className="px-glass-padding py-5">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded bg-primary-container/20 flex items-center justify-center">
@@ -198,8 +205,9 @@ export const Deployments = () => {
                     </button>
                   </td>
                 </tr>
-              ))}
-            </tbody>
+              ))
+            )}
+          </tbody>
           </table>
         </div>
 

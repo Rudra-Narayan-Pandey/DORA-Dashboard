@@ -10,14 +10,15 @@ const incidentController = {
    */
   getIncidents: async (req, res, next) => {
     try {
-      const { page, limit, severity, status, environment, search } = req.query;
+      const { page, limit, severity, status, environment, search, dateRange } = req.query;
       const data = await incidentService.getIncidents(req, {
         page,
         limit,
         severity,
         status,
         environment,
-        search
+        search,
+        dateRange
       });
       
       res.status(200).json({
