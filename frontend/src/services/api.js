@@ -11,7 +11,7 @@ const api = axios.create({
 // Request interceptor (e.g., for auth tokens and dynamic API endpoints)
 api.interceptors.request.use(
   (config) => {
-    config.baseURL = localStorage.getItem('dora_api_url') || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    config.baseURL = localStorage.getItem('dora_api_url') || import.meta.env.VITE_API_URL;
     const token = localStorage.getItem('dora_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
