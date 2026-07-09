@@ -46,18 +46,9 @@ const devOrigins = [
 ];
 
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    // Allow local development, explicitly configured frontend URL, and any Azure Static Web Apps domain
-    const isAzureStaticWebApp = origin.endsWith('.azurestaticapps.net');
-    if (env.NODE_ENV === 'development' || devOrigins.includes(origin) || origin === env.FRONTEND_URL || isAzureStaticWebApp) {
-      return callback(null, true);
-    }
-    return callback(new Error('CORS policy violation'), false);
-  },
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
 }));
 app.use(compression());
 
