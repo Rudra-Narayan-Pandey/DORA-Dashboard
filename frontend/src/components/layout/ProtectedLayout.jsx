@@ -169,7 +169,7 @@ export const ProtectedLayout = () => {
 
               <form onSubmit={handleLaunchSubmit} className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2 flex flex-col">
+                  <div className="space-y-2 flex flex-col col-span-2">
                     <label className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-widest px-1">
                       Service Node
                     </label>
@@ -206,20 +206,20 @@ export const ProtectedLayout = () => {
                       <option className="bg-surface text-on-surface" value="Staging">STAGING</option>
                     </select>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-widest px-1">
-                    Commit Hash / Version
-                  </label>
-                  <input 
-                    type="text"
-                    value={version}
-                    onChange={(e) => setVersion(e.target.value)}
-                    placeholder="Azure run note, branch, or release version"
-                    className="w-full glass-input rounded-xl px-4 py-3 text-on-surface text-sm placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
-                    required
-                  />
+                  <div className="space-y-2 flex flex-col">
+                    <label className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-widest px-1">
+                      Commit Hash / Version
+                    </label>
+                    <input 
+                      type="text"
+                      value={version}
+                      onChange={(e) => setVersion(e.target.value)}
+                      placeholder="Azure run note, branch, or release version"
+                      className="w-full glass-input rounded-xl px-4 py-3 text-on-surface text-sm placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-primary-container/5 border border-primary-container/20 flex gap-4">
