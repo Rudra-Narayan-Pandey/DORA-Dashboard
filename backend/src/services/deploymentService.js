@@ -17,8 +17,6 @@ const deploymentService = {
    */
   getDeployments: async (req, filters = {}) => {
     const cacheKey = generateKey(req.azurePat, 'deployments_ledger', filters);
-  getDeployments: async (req, filters = {}) => {
-    const cacheKey = generateKey(req.azurePat, 'deployments_ledger', filters);
     const cachedData = cacheService.get(cacheKey);
 
     if (cachedData) {
