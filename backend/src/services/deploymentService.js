@@ -325,8 +325,37 @@ const deploymentService = {
               url: run._links?.web?.href || run.url
             };
           } catch (runError) {
-            logger.warn(`Azure DevOps pipeline queue unauthorized or failed: ${runError.message}`);
-            throw runError;
+            if (runError.response && runError.response.status === 400) {
+              logger.warn(`Azure DevOps rejected template parameters. Retrying without parameters...`);
+              try {
+                const retryRes = await coreClient.post(
+                  `/${env.AZURE_PROJECT}/_apis/pipelines/${matchPipeline.id}/runs?api-version=${env.AZURE_API_VERSION}`,
+                  {}
+                );
+                run = retryRes.data;
+                return {
+                  id: `RUN-${run.id}`,
+                  runId: run.id,
+                  version: version || run.name || `run-${run.id}`,
+                  environment,
+                  pipeline: matchPipeline.name,
+                  pipelineId: matchPipeline.id,
+                  status: 'active',
+                  triggeredBy: deploymentData.triggeredBy || '',
+                  timestamp: run.createdDate || new Date().toISOString(),
+                  duration: 0,
+                  commit: '',
+                  rollbacked: false,
+                  url: run._links?.web?.href || run.url
+                };
+              } catch (retryError) {
+                logger.warn(`Azure DevOps pipeline queue unauthorized or failed on retry: ${retryError.message}`);
+                throw retryError;
+              }
+            } else {
+              logger.warn(`Azure DevOps pipeline queue unauthorized or failed: ${runError.message}`);
+              throw runError;
+            }
           }
         }
       }
