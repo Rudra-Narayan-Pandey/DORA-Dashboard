@@ -35,7 +35,7 @@ const pipelineService = {
         folder: pipe.folder || '/',
         type: pipe.configuration?.type || 'yaml',
         url: pipe.url
-      }));
+      })).sort((a, b) => Number(a.id) - Number(b.id));
 
       const duration = Date.now() - startTime;
       logger.info(`Pipelines retrieved from Azure DevOps: found ${formatted.length} configurations`, duration);
