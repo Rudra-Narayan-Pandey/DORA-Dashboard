@@ -59,12 +59,12 @@ export const Dashboard = () => {
   const { metrics, trends, deploymentsData, refreshData, loading, error } = useContext(DashboardContext);
   const { filters, updateFilters } = useContext(FilterContext);
 
-  // UTC clock ticker state
-  const [utcTime, setUtcTime] = useState(dayjs().utc().format('YYYY-MM-DD HH:mm:ss'));
+  // Local clock ticker state
+  const [localTime, setLocalTime] = useState(dayjs().format('YYYY-MM-DD HH:mm:ss'));
 
   useEffect(() => {
     const clock = setInterval(() => {
-      setUtcTime(dayjs().utc().format('YYYY-MM-DD HH:mm:ss'));
+      setLocalTime(dayjs().format('YYYY-MM-DD HH:mm:ss'));
     }, 1000);
     return () => clearInterval(clock);
   }, []);
@@ -188,7 +188,7 @@ export const Dashboard = () => {
           </h2>
           <div className="flex items-center gap-3 text-on-surface-variant font-label-mono mt-2">
             <span className="w-2 h-2 rounded-full bg-primary-container pulse-dot"></span>
-            <span>UTC {utcTime}</span>
+            <span>LOCAL {localTime}</span>
             <span className="opacity-30">|</span>
             <span>{metrics ? 'LIVE AZURE DATA' : 'AWAITING TELEMETRY'}</span>
           </div>
