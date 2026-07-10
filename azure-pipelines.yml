@@ -1,0 +1,20 @@
+trigger:
+- main
+
+parameters:
+  - name: environment
+    type: string
+    default: 'PRODUCTION'
+  - name: version
+    type: string
+    default: ''
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- script: |
+    echo "Triggering deployment for DORA Dashboard"
+    echo "Target Environment: ${{ parameters.environment }}"
+    echo "Target Version/Commit: ${{ parameters.version }}"
+  displayName: 'Acknowledge DORA Dashboard Trigger'
