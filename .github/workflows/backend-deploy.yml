@@ -48,7 +48,7 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'dora-dashboard-api'
+          app-name: 'dora-dashboard-api-aydmacc6fyh2exej'
           slot-name: 'Production'
           package: ./backend-app
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BDF02EC95A2844679E81AFDD85A783FF }}
