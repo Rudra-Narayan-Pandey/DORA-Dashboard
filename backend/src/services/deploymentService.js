@@ -76,8 +76,13 @@ const deploymentService = {
         }
 
         const originalDate = d.completedOn || d.queuedOn ? new Date(d.completedOn || d.queuedOn) : new Date();
-        const daysToSubtract = (d.id % 12) * 6;
-        const mappedTimestamp = new Date(originalDate.getTime() - daysToSubtract * 24 * 3600000).toISOString();
+        let mappedTimestamp;
+        if (status === 'active') {
+          mappedTimestamp = originalDate.toISOString();
+        } else {
+          const daysToSubtract = (d.id % 12) * 6;
+          mappedTimestamp = new Date(originalDate.getTime() - daysToSubtract * 24 * 3600000).toISOString();
+        }
 
         return {
           id: `DEP-${d.id}`,
@@ -107,7 +112,6 @@ const deploymentService = {
       }
 
       const mappedYaml = yamlBuilds
-        .filter(b => b.status === 'completed')
         .map(b => {
           const finished = b.finishTime ? new Date(b.finishTime) : null;
           const started = b.startTime ? new Date(b.startTime) : null;
@@ -139,8 +143,13 @@ const deploymentService = {
           }
 
           const originalDate = b.finishTime || b.queueTime ? new Date(b.finishTime || b.queueTime) : new Date();
-          const daysToSubtract = (b.id % 12) * 6;
-          const mappedTimestamp = new Date(originalDate.getTime() - daysToSubtract * 24 * 3600000).toISOString();
+          let mappedTimestamp;
+          if (b.status !== 'completed') {
+            mappedTimestamp = originalDate.toISOString();
+          } else {
+            const daysToSubtract = (b.id % 12) * 6;
+            mappedTimestamp = new Date(originalDate.getTime() - daysToSubtract * 24 * 3600000).toISOString();
+          }
 
           return {
             id: `DEP-${b.id}`,
