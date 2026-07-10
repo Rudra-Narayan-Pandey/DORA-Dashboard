@@ -268,11 +268,7 @@ const deploymentService = {
           const buildQueueRes = await coreClient.post(
             `/${env.AZURE_PROJECT}/_apis/build/builds?api-version=${env.AZURE_API_VERSION}`,
             {
-              definition: { id: Number(matchPipeline.id) },
-              parameters: JSON.stringify({
-                environment,
-                version
-              })
+              definition: { id: Number(matchPipeline.id) }
             }
           );
           run = buildQueueRes.data;
