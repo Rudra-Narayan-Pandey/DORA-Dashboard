@@ -293,7 +293,6 @@ const incidentService = {
       cacheService.invalidate(req.azurePat, 'dashboard_summary');
       cacheService.invalidate(req.azurePat, 'metrics');
 
-      let response;
       try {
         response = await client.patch(
           `/${env.AZURE_PROJECT}/_apis/wit/workitems/${numericId}?api-version=${env.AZURE_API_VERSION}`,
@@ -319,8 +318,22 @@ const incidentService = {
             }
           );
         } catch (closeErr) {
-          logger.warn(`Azure DevOps work item resolution failed for ID ${incidentId}: ${closeErr.message}`);
-          throw closeErr;
+          logger.warn(`Failed to set state to "Closed" for item ${numericId}. Retrying with "Done"...`);
+          patchBody[0].value = 'Done';
+          try {
+            response = await client.patch(
+              `/${env.AZURE_PROJECT}/_apis/wit/workitems/${numericId}?api-version=${env.AZURE_API_VERSION}`,
+              patchBody,
+              {
+                headers: {
+                  'Content-Type': 'application/json-patch+json'
+                }
+              }
+            );
+          } catch (doneErr) {
+            logger.warn(`Azure DevOps work item resolution failed for ID ${incidentId} on all state fallbacks (Resolved, Closed, Done): ${doneErr.message}`);
+            throw doneErr;
+          }
         }
       }
 
