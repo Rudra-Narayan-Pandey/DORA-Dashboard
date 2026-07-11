@@ -1,4 +1,5 @@
 import axios from 'axios';
+// Trigger deploy after updating VITE_API_URL secret
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
